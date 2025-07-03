@@ -16,7 +16,7 @@ import (
 // TuiResult holds the outcome of an interactive prompt session.
 type TuiResult struct {
 	Selectors    []string
-	SelectedData map[string]interface{} // Pour stocker les données sélectionnées
+	SelectedData map[string]interface{}
 	NextURL      string
 	Finished     bool
 }
@@ -43,10 +43,10 @@ type ImageInfo struct {
 // SelectableElement représente un élément individuel sélectionnable
 type SelectableElement struct {
 	Index       int
-	Type        string // "title", "h1", "h2", "h3", "p", "link", "image", "list"
+	Type        string
 	Content     string
-	FullContent string      // Contenu complet pour les éléments tronqués
-	Data        interface{} // Données associées (ex: URL pour les liens)
+	FullContent string
+	Data        interface{}
 }
 
 // SelectionState garde l'état des sélections en cours
@@ -88,7 +88,6 @@ func PromptSelectors(root *html.Node, currentURL *url.URL) (TuiResult, error) {
 			return handleFinishWithSelections(state)
 
 		case strings.ToLower(line) == "reset" || strings.ToLower(line) == "clear":
-			// Réinitialiser toutes les sélections
 			for i := range state.Selected {
 				state.Selected[i] = false
 			}
@@ -104,7 +103,6 @@ func PromptSelectors(root *html.Node, currentURL *url.URL) (TuiResult, error) {
 			return result, nil
 
 		case strings.ToLower(line) == "all" || strings.ToLower(line) == "tout":
-			// Sélectionner tous les éléments
 			for i := range state.Selected {
 				state.Selected[i] = true
 			}
@@ -126,13 +124,11 @@ func extractPageInfo(root *html.Node, currentURL *url.URL) PageInfo {
 		URL: currentURL.String(),
 	}
 
-	// Extraire le titre
 	titleNodes := parser.FindAll(root, "title")
 	if len(titleNodes) > 0 {
 		info.Title = strings.TrimSpace(parser.TextContent(titleNodes[0]))
 	}
 
-	// Extraire les H1, H2, H3
 	h1Nodes := parser.FindAll(root, "h1")
 	for _, node := range h1Nodes {
 		text := strings.TrimSpace(parser.TextContent(node))
@@ -157,16 +153,14 @@ func extractPageInfo(root *html.Node, currentURL *url.URL) PageInfo {
 		}
 	}
 
-	// Extraire les paragraphes
 	pNodes := parser.FindAll(root, "p")
 	for _, node := range pNodes {
 		text := strings.TrimSpace(parser.TextContent(node))
-		if text != "" && len(text) > 10 { // Ignorer les paragraphes trop courts
+		if text != "" && len(text) > 10 {
 			info.Paragraphs = append(info.Paragraphs, text)
 		}
 	}
 
-	// Extraire les liens avec URLs absolues
 	links := parser.FindLinks(root)
 	for _, link := range links {
 		if link.Href != "" {
@@ -180,7 +174,6 @@ func extractPageInfo(root *html.Node, currentURL *url.URL) PageInfo {
 		}
 	}
 
-	// Extraire les images
 	imgNodes := parser.FindAll(root, "img")
 	for _, node := range imgNodes {
 		var src, alt string
@@ -197,7 +190,6 @@ func extractPageInfo(root *html.Node, currentURL *url.URL) PageInfo {
 		}
 	}
 
-	// Extraire les listes
 	listNodes := append(parser.FindAll(root, "ul"), parser.FindAll(root, "ol")...)
 	for _, listNode := range listNodes {
 		liNodes := parser.FindAll(listNode, "li")
@@ -220,7 +212,6 @@ func buildSelectableElements(info PageInfo) []SelectableElement {
 	var elements []SelectableElement
 	index := 0
 
-	// Titre
 	if info.Title != "" {
 		elements = append(elements, SelectableElement{
 			Index:       index,
@@ -232,7 +223,6 @@ func buildSelectableElements(info PageInfo) []SelectableElement {
 		index++
 	}
 
-	// H1
 	for _, h1 := range info.H1 {
 		elements = append(elements, SelectableElement{
 			Index:       index,
@@ -244,7 +234,6 @@ func buildSelectableElements(info PageInfo) []SelectableElement {
 		index++
 	}
 
-	// H2
 	for _, h2 := range info.H2 {
 		elements = append(elements, SelectableElement{
 			Index:       index,
@@ -256,7 +245,6 @@ func buildSelectableElements(info PageInfo) []SelectableElement {
 		index++
 	}
 
-	// H3
 	for _, h3 := range info.H3 {
 		elements = append(elements, SelectableElement{
 			Index:       index,
@@ -268,7 +256,6 @@ func buildSelectableElements(info PageInfo) []SelectableElement {
 		index++
 	}
 
-	// Paragraphes
 	for _, p := range info.Paragraphs {
 		elements = append(elements, SelectableElement{
 			Index:       index,
@@ -280,7 +267,6 @@ func buildSelectableElements(info PageInfo) []SelectableElement {
 		index++
 	}
 
-	// Liens
 	for _, link := range info.Links {
 		linkText := fmt.Sprintf("%s (%s)", link.Text, link.Href)
 		elements = append(elements, SelectableElement{
@@ -293,7 +279,6 @@ func buildSelectableElements(info PageInfo) []SelectableElement {
 		index++
 	}
 
-	// Images
 	for _, img := range info.Images {
 		alt := img.Alt
 		if alt == "" {
@@ -310,7 +295,6 @@ func buildSelectableElements(info PageInfo) []SelectableElement {
 		index++
 	}
 
-	// Listes
 	for _, list := range info.Lists {
 		elements = append(elements, SelectableElement{
 			Index:       index,
@@ -382,7 +366,6 @@ func printSelectionStatus(state SelectionState) {
 	if selectedCount > 0 {
 		fmt.Printf("\n📊 SÉLECTIONS ACTUELLES : %d élément(s) sélectionné(s)\n", selectedCount)
 
-		// Grouper par type pour l'affichage
 		typeCount := make(map[string]int)
 		for i, elem := range state.Elements {
 			if state.Selected[i] {
@@ -493,7 +476,6 @@ func parseIndices(input string, maxIndex int) ([]int, error) {
 	for _, part := range parts {
 		part = strings.TrimSpace(part)
 		if strings.Contains(part, "-") {
-			// Plage (ex: "3-7")
 			rangeParts := strings.Split(part, "-")
 			if len(rangeParts) != 2 {
 				return nil, fmt.Errorf("format de plage invalide: %s", part)
@@ -517,7 +499,6 @@ func parseIndices(input string, maxIndex int) ([]int, error) {
 				indices = append(indices, i)
 			}
 		} else {
-			// Index individuel
 			idx, err := strconv.Atoi(part)
 			if err != nil {
 				return nil, fmt.Errorf("index invalide: %s", part)
@@ -531,7 +512,6 @@ func parseIndices(input string, maxIndex int) ([]int, error) {
 		}
 	}
 
-	// Supprimer les doublons
 	uniqueIndices := make([]int, 0, len(indices))
 	seen := make(map[int]bool)
 	for _, idx := range indices {
@@ -548,7 +528,6 @@ func handleFinishWithSelections(state SelectionState) (TuiResult, error) {
 	selectedData := make(map[string]interface{})
 	var selectors []string
 
-	// Organiser les éléments sélectionnés par type
 	selectedByType := make(map[string][]interface{})
 
 	for i, elem := range state.Elements {
@@ -584,7 +563,6 @@ func handleFinishWithSelections(state SelectionState) (TuiResult, error) {
 		}
 	}
 
-	// Convertir en slices typées
 	for elemType, items := range selectedByType {
 		var stringSlice []string
 		for _, item := range items {
@@ -596,7 +574,7 @@ func handleFinishWithSelections(state SelectionState) (TuiResult, error) {
 
 	selectedCount := len(selectors)
 	if _, hasTitle := selectedData["title"]; hasTitle {
-		selectedCount += len(selectedByType) - 1 // -1 car le titre est déjà compté
+		selectedCount += len(selectedByType) - 1
 	} else {
 		selectedCount = len(selectedByType)
 	}

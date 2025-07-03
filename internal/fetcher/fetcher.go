@@ -10,10 +10,6 @@ import (
 )
 
 // Fetcher encapsulates HTTP client logic.
-// It exposes a simple API to download an URL and return the root *html.Node.
-// The HTTP client is configured with a timeout and a custom User-Agent.
-// No other responsibilities live here.
-
 type Fetcher struct {
 	client *http.Client
 }

@@ -36,7 +36,6 @@ func main() {
 	var useStructuredOutput bool
 
 	if strings.TrimSpace(*selPtr) == "" {
-		// Interactive mode
 		var err error
 		selectors, structuredData, useStructuredOutput, err = interactiveSession(*urlPtr, f)
 		if err != nil {
@@ -46,21 +45,18 @@ func main() {
 			fmt.Println("\n🔄 Aucun élément sélectionné pour l'extraction.")
 			fmt.Println("💡 Relancez le programme et sélectionnez des éléments pour extraire des données.")
 			fmt.Println("📖 Exemple : go run main.go -url \"https://example.com\"")
-			os.Exit(0) // Exit gracieusement, pas une erreur
+			os.Exit(0)
 		}
 	} else {
-		// Direct mode
 		selectors = strings.Split(*selPtr, ",")
 		useStructuredOutput = false
 	}
 
 	if useStructuredOutput && structuredData != nil {
-		// Utiliser la sortie structurée
 		structuredResult := io.StructuredResult{
 			URL: *urlPtr,
 		}
 
-		// Convertir les données sélectionnées en structure
 		if title, ok := structuredData["title"].(string); ok {
 			structuredResult.Title = title
 		}
@@ -98,7 +94,6 @@ func main() {
 			log.Fatalf("❌ Erreur lors de l'écriture : %v", err)
 		}
 	} else {
-		// Utiliser l'extraction classique par sélecteurs
 		fmt.Printf("\n🔄 Extraction finale des données de %s...\n", *urlPtr)
 		doc, err := f.Fetch(*urlPtr)
 		if err != nil {
@@ -160,12 +155,10 @@ func interactiveSession(startURL string, f *fetcher.Fetcher) ([]string, map[stri
 
 		if len(res.Selectors) > 0 {
 			if res.SelectedData != nil {
-				// Mode structuré
 				structuredData = res.SelectedData
 				useStructuredOutput = true
 				fmt.Printf("✅ Données structurées sélectionnées\n")
 			} else {
-				// Mode classique par sélecteurs
 				collectedSelectors = append(collectedSelectors, res.Selectors...)
 				fmt.Printf("✅ Added %d selectors. Total: %d\n", len(res.Selectors), len(collectedSelectors))
 			}
@@ -184,7 +177,6 @@ func interactiveSession(startURL string, f *fetcher.Fetcher) ([]string, map[stri
 		return nil, structuredData, true, nil
 	}
 
-	// Remove duplicates for classic mode
 	uniqueSelectors := make(map[string]struct{})
 	for _, s := range collectedSelectors {
 		uniqueSelectors[s] = struct{}{}

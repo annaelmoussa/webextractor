@@ -42,7 +42,7 @@ func Write(path string, doc DocumentResult) error {
 		defer file.Close()
 		enc = json.NewEncoder(file)
 	}
-	enc.SetIndent("", "  ") // 2 spaces indentation
+	enc.SetIndent("", "  ")
 	if err := enc.Encode(doc); err != nil {
 		return fmt.Errorf("json encode: %w", err)
 	}
@@ -60,7 +60,7 @@ func WriteStructured(path string, doc StructuredResult) error {
 		defer file.Close()
 		enc = json.NewEncoder(file)
 	}
-	enc.SetIndent("", "  ") // 2 spaces indentation
+	enc.SetIndent("", "  ")
 	if err := enc.Encode(doc); err != nil {
 		return fmt.Errorf("json encode: %w", err)
 	}
