@@ -1,0 +1,34 @@
+# Binaries built by Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+
+# Output binary for this project
+/webextractor/webextractor
+
+# Coverage and profiling files
+*.out
+*.coverprofile
+cover.out
+coverage.out
+
+# Dependency directories (vendor, if ever used)
+vendor/
+
+# IDE and editor configuration files
+.idea/
+.vscode/
+
+# System files
+.DS_Store
+
+# Cursor extension metadata
+.cursor/
+
+# Temporary files
+*.tmp
+*.swp
+*~ 
