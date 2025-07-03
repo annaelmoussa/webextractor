@@ -15,50 +15,49 @@ import (
 
 // TuiResult holds the outcome of an interactive prompt session.
 type TuiResult struct {
-	Selectors []string
-	NextURL   string
-	Finished  bool
+	Selectors    []string
+	SelectedData map[string]interface{} // Pour stocker les données sélectionnées
+	NextURL      string
+	Finished     bool
 }
 
-// ElementInfo contient les informations d'un élément avec sa catégorie
-type ElementInfo struct {
-	Node        *html.Node
-	Category    string
+// PageInfo contient toutes les informations structurées de la page
+type PageInfo struct {
+	URL        string
+	Title      string
+	H1         []string
+	H2         []string
+	H3         []string
+	Paragraphs []string
+	Links      []parser.Link
+	Images     []ImageInfo
+	Lists      []string
+}
+
+// ImageInfo contient les informations d'une image
+type ImageInfo struct {
+	Src string
+	Alt string
+}
+
+// ElementCategory représente une catégorie d'éléments sélectionnables
+type ElementCategory struct {
+	Name        string
+	Icon        string
+	Key         string
+	Elements    []string
 	Description string
-	Preview     string
-	Selector    string
 }
 
-// PromptSelectors enters an interactive session where the user can pick nodes
-// by numeric indices or navigate to a new page.
+// PromptSelectors enters an interactive session where the user can pick elements
+// by category and see a structured preview of the page content.
 func PromptSelectors(root *html.Node, currentURL *url.URL) (TuiResult, error) {
-	elements := categorizeElements(root)
-	links := parser.FindLinks(root)
-
-	// Make links absolute
-	for i, link := range links {
-		parsedHref, err := url.Parse(link.Href)
-		if err == nil {
-			links[i].Href = currentURL.ResolveReference(parsedHref).String()
-		}
-	}
-
+	pageInfo := extractPageInfo(root, currentURL)
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
-		printHeader(currentURL.String())
-
-		if len(elements) == 0 {
-			fmt.Println("❌ Aucun élément extractible trouvé sur cette page.")
-		} else {
-			printElementsMenu(elements)
-		}
-
-		if len(links) > 0 {
-			printLinksMenu(links)
-		}
-
-		printInstructions()
+		printStructuredPage(pageInfo)
+		printSelectionMenu()
 
 		fmt.Print("\n🎯 Votre choix : ")
 
@@ -74,19 +73,18 @@ func PromptSelectors(root *html.Node, currentURL *url.URL) (TuiResult, error) {
 			return handleFinish()
 
 		case strings.HasPrefix(strings.ToLower(line), "l"):
-			result, err := handleLinkNavigation(line, links)
+			result, err := handleLinkNavigation(line, pageInfo.Links)
 			if err != nil {
 				fmt.Printf("❌ %s\n", err)
 				continue
 			}
 			return result, nil
 
-		case strings.ToLower(line) == "apercu" || strings.ToLower(line) == "preview":
-			printPreview(elements)
-			continue
+		case strings.ToLower(line) == "all" || strings.ToLower(line) == "tout":
+			return handleSelectAll(pageInfo), nil
 
 		default:
-			result, err := handleElementSelection(line, elements)
+			result, err := handleCategorySelection(line, pageInfo)
 			if err != nil {
 				fmt.Printf("❌ %s\n", err)
 				continue
@@ -98,411 +96,415 @@ func PromptSelectors(root *html.Node, currentURL *url.URL) (TuiResult, error) {
 	}
 }
 
-func printHeader(url string) {
+func extractPageInfo(root *html.Node, currentURL *url.URL) PageInfo {
+	info := PageInfo{
+		URL: currentURL.String(),
+	}
+
+	// Extraire le titre
+	titleNodes := parser.FindAll(root, "title")
+	if len(titleNodes) > 0 {
+		info.Title = strings.TrimSpace(parser.TextContent(titleNodes[0]))
+	}
+
+	// Extraire les H1, H2, H3
+	h1Nodes := parser.FindAll(root, "h1")
+	for _, node := range h1Nodes {
+		text := strings.TrimSpace(parser.TextContent(node))
+		if text != "" {
+			info.H1 = append(info.H1, text)
+		}
+	}
+
+	h2Nodes := parser.FindAll(root, "h2")
+	for _, node := range h2Nodes {
+		text := strings.TrimSpace(parser.TextContent(node))
+		if text != "" {
+			info.H2 = append(info.H2, text)
+		}
+	}
+
+	h3Nodes := parser.FindAll(root, "h3")
+	for _, node := range h3Nodes {
+		text := strings.TrimSpace(parser.TextContent(node))
+		if text != "" {
+			info.H3 = append(info.H3, text)
+		}
+	}
+
+	// Extraire les paragraphes
+	pNodes := parser.FindAll(root, "p")
+	for _, node := range pNodes {
+		text := strings.TrimSpace(parser.TextContent(node))
+		if text != "" && len(text) > 10 { // Ignorer les paragraphes trop courts
+			info.Paragraphs = append(info.Paragraphs, text)
+		}
+	}
+
+	// Extraire les liens avec URLs absolues
+	links := parser.FindLinks(root)
+	for _, link := range links {
+		if link.Href != "" {
+			parsedHref, err := url.Parse(link.Href)
+			if err == nil {
+				link.Href = currentURL.ResolveReference(parsedHref).String()
+			}
+			if link.Text != "" {
+				info.Links = append(info.Links, link)
+			}
+		}
+	}
+
+	// Extraire les images
+	imgNodes := parser.FindAll(root, "img")
+	for _, node := range imgNodes {
+		var src, alt string
+		for _, attr := range node.Attr {
+			if attr.Key == "src" {
+				src = attr.Val
+			}
+			if attr.Key == "alt" {
+				alt = attr.Val
+			}
+		}
+		if src != "" {
+			info.Images = append(info.Images, ImageInfo{Src: src, Alt: alt})
+		}
+	}
+
+	// Extraire les listes
+	listNodes := append(parser.FindAll(root, "ul"), parser.FindAll(root, "ol")...)
+	for _, listNode := range listNodes {
+		liNodes := parser.FindAll(listNode, "li")
+		var listItems []string
+		for _, li := range liNodes {
+			text := strings.TrimSpace(parser.TextContent(li))
+			if text != "" {
+				listItems = append(listItems, text)
+			}
+		}
+		if len(listItems) > 0 {
+			info.Lists = append(info.Lists, strings.Join(listItems, " | "))
+		}
+	}
+
+	return info
+}
+
+func printStructuredPage(info PageInfo) {
 	fmt.Printf("\n" + strings.Repeat("=", 70) + "\n")
-	fmt.Printf("🌐 EXTRACTION DE DONNÉES - %s\n", url)
-	fmt.Printf(strings.Repeat("=", 70) + "\n")
-}
+	fmt.Printf("📄 Page: %s\n\n", info.URL)
 
-func printElementsMenu(elements []ElementInfo) {
-	categories := make(map[string][]ElementInfo)
-	for _, elem := range elements {
-		categories[elem.Category] = append(categories[elem.Category], elem)
+	// Titre de la page
+	if info.Title != "" {
+		fmt.Printf("🌐 Title: %s\n", info.Title)
 	}
 
-	fmt.Printf("\n📋 ÉLÉMENTS DISPONIBLES POUR EXTRACTION :\n")
-
-	index := 0
-	categoryIcons := map[string]string{
-		"Titres":     "📰",
-		"Textes":     "📄",
-		"Liens":      "🔗",
-		"Boutons":    "🔘",
-		"Images":     "🖼️",
-		"Conteneurs": "📦",
-		"Autres":     "⚪",
+	// H1
+	if len(info.H1) > 0 {
+		fmt.Printf("🔠 H1:\n")
+		for _, h1 := range info.H1 {
+			fmt.Printf(" - %s\n", h1)
+		}
 	}
 
-	categoryOrder := []string{"Titres", "Textes", "Liens", "Boutons", "Images", "Conteneurs", "Autres"}
+	// H2
+	if len(info.H2) > 0 {
+		fmt.Printf("📰 H2:\n")
+		for _, h2 := range info.H2 {
+			fmt.Printf(" - %s\n", h2)
+		}
+	}
 
-	for _, category := range categoryOrder {
-		if elements, ok := categories[category]; ok && len(elements) > 0 {
-			icon, exists := categoryIcons[category]
-			if !exists {
-				icon = "⚪"
+	// H3
+	if len(info.H3) > 0 {
+		fmt.Printf("📋 H3:\n")
+		for _, h3 := range info.H3 {
+			fmt.Printf(" - %s\n", h3)
+		}
+	}
+
+	// Paragraphes
+	if len(info.Paragraphs) > 0 {
+		fmt.Printf("📝 Paragraphs:\n")
+		for i, p := range info.Paragraphs {
+			if i < 5 { // Limiter l'affichage à 5 paragraphes
+				preview := p
+				if len(preview) > 100 {
+					preview = preview[:97] + "..."
+				}
+				fmt.Printf(" - %s\n", preview)
 			}
-			fmt.Printf("\n  %s %s :\n", icon, category)
-			for _, elem := range elements {
-				fmt.Printf("    [%d] %s\n", index, elem.Description)
-				fmt.Printf("        💬 \"%s\"\n", elem.Preview)
-				index++
+		}
+		if len(info.Paragraphs) > 5 {
+			fmt.Printf(" ... et %d autres paragraphes\n", len(info.Paragraphs)-5)
+		}
+	}
+
+	// Liens
+	if len(info.Links) > 0 {
+		fmt.Printf("🔗 Links:\n")
+		for i, link := range info.Links {
+			if i < 5 { // Limiter l'affichage à 5 liens
+				fmt.Printf(" - %s (%s)\n", link.Text, link.Href)
 			}
 		}
+		if len(info.Links) > 5 {
+			fmt.Printf(" ... et %d autres liens\n", len(info.Links)-5)
+		}
 	}
+
+	// Images
+	if len(info.Images) > 0 {
+		fmt.Printf("🖼️ Images:\n")
+		for i, img := range info.Images {
+			if i < 3 { // Limiter l'affichage à 3 images
+				alt := img.Alt
+				if alt == "" {
+					alt = "Sans description"
+				}
+				fmt.Printf(" - %s (%s)\n", alt, img.Src)
+			}
+		}
+		if len(info.Images) > 3 {
+			fmt.Printf(" ... et %d autres images\n", len(info.Images)-3)
+		}
+	}
+
+	// Listes
+	if len(info.Lists) > 0 {
+		fmt.Printf("📄 Lists:\n")
+		for i, list := range info.Lists {
+			if i < 3 { // Limiter l'affichage à 3 listes
+				preview := list
+				if len(preview) > 80 {
+					preview = preview[:77] + "..."
+				}
+				fmt.Printf(" - %s\n", preview)
+			}
+		}
+		if len(info.Lists) > 3 {
+			fmt.Printf(" ... et %d autres listes\n", len(info.Lists)-3)
+		}
+	}
+
+	fmt.Printf("\n" + strings.Repeat("=", 70) + "\n")
 }
 
-func printLinksMenu(links []parser.Link) {
-	fmt.Printf("\n🔗 NAVIGATION VERS D'AUTRES PAGES :\n")
-	for i, link := range links {
-		linkText := link.Text
-		if linkText == "" {
-			linkText = "Lien sans texte"
-		}
-		if len(linkText) > 50 {
-			linkText = linkText[:47] + "..."
-		}
-		fmt.Printf("  [L%d] %s\n", i, linkText)
-		fmt.Printf("       🌐 %s\n", link.Href)
-	}
-}
-
-func printInstructions() {
-	fmt.Printf("\n" + strings.Repeat("-", 50) + "\n")
-	fmt.Printf("📝 INSTRUCTIONS :\n")
-	fmt.Printf("  • Tapez un numéro (ex: 0) pour sélectionner un élément\n")
-	fmt.Printf("  • Tapez plusieurs numéros (ex: 0,2,5) pour sélectionner plusieurs éléments\n")
-	fmt.Printf("  • Tapez une plage (ex: 0-3) pour sélectionner des éléments consécutifs\n")
-	fmt.Printf("  • Tapez L suivi d'un numéro (ex: L0) pour naviguer vers un lien\n")
-	fmt.Printf("  • Tapez 'apercu' pour voir ce qui serait extrait\n")
-	fmt.Printf("  • Tapez 'aide' pour plus d'informations\n")
-	fmt.Printf("  • Tapez 'fini' pour terminer la sélection\n")
-	fmt.Printf(strings.Repeat("-", 50))
+func printSelectionMenu() {
+	fmt.Printf("\n📝 SÉLECTIONNER LES ÉLÉMENTS À EXTRAIRE :\n")
+	fmt.Printf("  [title]     🌐 Titre de la page\n")
+	fmt.Printf("  [h1]        🔠 Tous les titres H1\n")
+	fmt.Printf("  [h2]        📰 Tous les titres H2\n")
+	fmt.Printf("  [h3]        📋 Tous les titres H3\n")
+	fmt.Printf("  [p]         📝 Tous les paragraphes\n")
+	fmt.Printf("  [links]     🔗 Tous les liens\n")
+	fmt.Printf("  [images]    🖼️ Toutes les images\n")
+	fmt.Printf("  [lists]     📄 Toutes les listes\n")
+	fmt.Printf("  [all]       ✨ Tous les éléments\n")
+	fmt.Printf("  [L0,L1...]  🌐 Naviguer vers un lien (L0 = premier lien)\n")
+	fmt.Printf("  [fini]      ✅ Terminer et générer le JSON\n")
+	fmt.Printf("  [aide]      ❓ Afficher l'aide\n")
 }
 
 func printHelp() {
 	fmt.Printf("\n" + strings.Repeat("*", 60) + "\n")
 	fmt.Printf("🆘 AIDE DÉTAILLÉE\n")
 	fmt.Printf(strings.Repeat("*", 60) + "\n")
-	fmt.Printf("\n🎯 QU'EST-CE QUE L'EXTRACTION DE DONNÉES ?\n")
-	fmt.Printf("WebExtractor vous aide à récupérer automatiquement du texte\n")
-	fmt.Printf("ou des informations spécifiques d'une page web.\n")
+	fmt.Printf("\n🎯 COMMENT UTILISER L'INTERFACE :\n")
+	fmt.Printf("1. Examinez la structure de la page affichée ci-dessus\n")
+	fmt.Printf("2. Sélectionnez les éléments que vous voulez extraire\n")
+	fmt.Printf("3. Tapez 'fini' pour générer le JSON final\n")
 
-	fmt.Printf("\n📋 TYPES D'ÉLÉMENTS :\n")
-	fmt.Printf("  📰 Titres : Titres principaux et sous-titres de la page\n")
-	fmt.Printf("  📄 Textes : Paragraphes et contenus textuels\n")
-	fmt.Printf("  🔗 Liens : Liens vers d'autres pages ou ressources\n")
-	fmt.Printf("  🔘 Boutons : Boutons cliquables et éléments interactifs\n")
-	fmt.Printf("  🖼️ Images : Descriptions et textes alternatifs des images\n")
-	fmt.Printf("  📦 Conteneurs : Sections qui regroupent d'autres éléments\n")
+	fmt.Printf("\n📋 EXEMPLES DE SÉLECTION :\n")
+	fmt.Printf("  → 'title' pour extraire uniquement le titre\n")
+	fmt.Printf("  → 'h1' pour extraire tous les H1\n")
+	fmt.Printf("  → 'p' pour extraire tous les paragraphes\n")
+	fmt.Printf("  → 'links' pour extraire tous les liens\n")
+	fmt.Printf("  → 'all' pour extraire tous les éléments\n")
 
-	fmt.Printf("\n💡 EXEMPLES D'UTILISATION :\n")
-	fmt.Printf("  → Tapez '0' pour sélectionner le premier élément\n")
-	fmt.Printf("  → Tapez '0,2,5' pour sélectionner les éléments 0, 2 et 5\n")
-	fmt.Printf("  → Tapez '1-4' pour sélectionner les éléments 1, 2, 3 et 4\n")
-	fmt.Printf("  → Tapez 'L0' pour aller vers le premier lien\n")
+	fmt.Printf("\n🌐 NAVIGATION :\n")
+	fmt.Printf("  → 'L0' pour aller au premier lien\n")
+	fmt.Printf("  → 'L1' pour aller au deuxième lien, etc.\n")
 
-	fmt.Printf("\n✨ CONSEILS :\n")
-	fmt.Printf("  • Commencez par sélectionner quelques éléments pour voir le résultat\n")
-	fmt.Printf("  • Utilisez 'apercu' pour vérifier avant de terminer\n")
-	fmt.Printf("  • Vous pouvez toujours naviguer vers d'autres pages et revenir\n")
-	fmt.Printf("  • Les sélections sont cumulatives entre les pages\n")
+	fmt.Printf("\n📤 RÉSULTAT :\n")
+	fmt.Printf("Le JSON généré contiendra les clés correspondant aux éléments\n")
+	fmt.Printf("sélectionnés (title, h1, paragraphs, links, etc.)\n")
 
 	fmt.Printf("\n" + strings.Repeat("*", 60) + "\n")
 }
 
-func printPreview(elements []ElementInfo) {
-	fmt.Printf("\n" + strings.Repeat("~", 50) + "\n")
-	fmt.Printf("👀 APERÇU DE CE QUI SERAIT EXTRAIT :\n")
-	fmt.Printf(strings.Repeat("~", 50) + "\n")
+func handleSelectAll(info PageInfo) TuiResult {
+	selectedData := make(map[string]interface{})
+	var selectors []string
 
-	if len(elements) == 0 {
-		fmt.Printf("Aucun élément sélectionnable trouvé.\n")
-		return
+	if info.Title != "" {
+		selectedData["title"] = info.Title
+		selectors = append(selectors, "title")
+	}
+	if len(info.H1) > 0 {
+		selectedData["h1"] = info.H1
+		selectors = append(selectors, "h1")
+	}
+	if len(info.H2) > 0 {
+		selectedData["h2"] = info.H2
+		selectors = append(selectors, "h2")
+	}
+	if len(info.H3) > 0 {
+		selectedData["h3"] = info.H3
+		selectors = append(selectors, "h3")
+	}
+	if len(info.Paragraphs) > 0 {
+		selectedData["paragraphs"] = info.Paragraphs
+		selectors = append(selectors, "p")
+	}
+	if len(info.Links) > 0 {
+		linkUrls := make([]string, len(info.Links))
+		for i, link := range info.Links {
+			linkUrls[i] = link.Href
+		}
+		selectedData["links"] = linkUrls
+		selectors = append(selectors, "links")
+	}
+	if len(info.Images) > 0 {
+		imageSrcs := make([]string, len(info.Images))
+		for i, img := range info.Images {
+			imageSrcs[i] = img.Src
+		}
+		selectedData["images"] = imageSrcs
+		selectors = append(selectors, "images")
+	}
+	if len(info.Lists) > 0 {
+		selectedData["lists"] = info.Lists
+		selectors = append(selectors, "lists")
 	}
 
-	for i, elem := range elements {
-		fmt.Printf("\n[%d] %s :\n", i, elem.Description)
-		fmt.Printf("    Sélecteur CSS : %s\n", elem.Selector)
-		fmt.Printf("    Contenu : \"%s\"\n", elem.Preview)
+	fmt.Printf("✅ Tous les éléments sélectionnés !\n")
+	return TuiResult{
+		Selectors:    selectors,
+		SelectedData: selectedData,
+		Finished:     true,
+	}
+}
+
+func handleCategorySelection(input string, info PageInfo) (*TuiResult, error) {
+	input = strings.ToLower(strings.TrimSpace(input))
+	selectedData := make(map[string]interface{})
+	var selectors []string
+
+	switch input {
+	case "title":
+		if info.Title != "" {
+			selectedData["title"] = info.Title
+			selectors = append(selectors, "title")
+			fmt.Printf("✅ Titre sélectionné: %s\n", info.Title)
+		} else {
+			return nil, fmt.Errorf("aucun titre trouvé sur cette page")
+		}
+
+	case "h1":
+		if len(info.H1) > 0 {
+			selectedData["h1"] = info.H1
+			selectors = append(selectors, "h1")
+			fmt.Printf("✅ %d titre(s) H1 sélectionné(s)\n", len(info.H1))
+		} else {
+			return nil, fmt.Errorf("aucun H1 trouvé sur cette page")
+		}
+
+	case "h2":
+		if len(info.H2) > 0 {
+			selectedData["h2"] = info.H2
+			selectors = append(selectors, "h2")
+			fmt.Printf("✅ %d titre(s) H2 sélectionné(s)\n", len(info.H2))
+		} else {
+			return nil, fmt.Errorf("aucun H2 trouvé sur cette page")
+		}
+
+	case "h3":
+		if len(info.H3) > 0 {
+			selectedData["h3"] = info.H3
+			selectors = append(selectors, "h3")
+			fmt.Printf("✅ %d titre(s) H3 sélectionné(s)\n", len(info.H3))
+		} else {
+			return nil, fmt.Errorf("aucun H3 trouvé sur cette page")
+		}
+
+	case "p", "paragraphs":
+		if len(info.Paragraphs) > 0 {
+			selectedData["paragraphs"] = info.Paragraphs
+			selectors = append(selectors, "p")
+			fmt.Printf("✅ %d paragraphe(s) sélectionné(s)\n", len(info.Paragraphs))
+		} else {
+			return nil, fmt.Errorf("aucun paragraphe trouvé sur cette page")
+		}
+
+	case "links":
+		if len(info.Links) > 0 {
+			linkUrls := make([]string, len(info.Links))
+			for i, link := range info.Links {
+				linkUrls[i] = link.Href
+			}
+			selectedData["links"] = linkUrls
+			selectors = append(selectors, "links")
+			fmt.Printf("✅ %d lien(s) sélectionné(s)\n", len(info.Links))
+		} else {
+			return nil, fmt.Errorf("aucun lien trouvé sur cette page")
+		}
+
+	case "images":
+		if len(info.Images) > 0 {
+			imageSrcs := make([]string, len(info.Images))
+			for i, img := range info.Images {
+				imageSrcs[i] = img.Src
+			}
+			selectedData["images"] = imageSrcs
+			selectors = append(selectors, "images")
+			fmt.Printf("✅ %d image(s) sélectionnée(s)\n", len(info.Images))
+		} else {
+			return nil, fmt.Errorf("aucune image trouvée sur cette page")
+		}
+
+	case "lists":
+		if len(info.Lists) > 0 {
+			selectedData["lists"] = info.Lists
+			selectors = append(selectors, "lists")
+			fmt.Printf("✅ %d liste(s) sélectionnée(s)\n", len(info.Lists))
+		} else {
+			return nil, fmt.Errorf("aucune liste trouvée sur cette page")
+		}
+
+	default:
+		return nil, fmt.Errorf("sélection '%s' non reconnue. Tapez 'aide' pour voir les options", input)
 	}
 
-	fmt.Printf("\n" + strings.Repeat("~", 50) + "\n")
+	return &TuiResult{
+		Selectors:    selectors,
+		SelectedData: selectedData,
+		Finished:     true,
+	}, nil
 }
 
 func handleFinish() (TuiResult, error) {
-	fmt.Printf("\n✅ Session terminée.\n")
-	fmt.Printf("💡 Conseil : Si vous n'avez rien sélectionné, le programme va s'arrêter.\n")
-	fmt.Printf("   Relancez avec des sélections pour extraire des données !\n")
+	fmt.Printf("✅ Session terminée.\n")
 	return TuiResult{Finished: true}, nil
 }
 
 func handleLinkNavigation(input string, links []parser.Link) (TuiResult, error) {
-	idxStr := strings.TrimPrefix(strings.ToLower(input), "l")
-	idx, err := strconv.Atoi(idxStr)
-	if err != nil || idx < 0 || idx >= len(links) {
-		return TuiResult{}, fmt.Errorf("Numéro de lien invalide. Utilisez L0, L1, etc. (disponibles : L0 à L%d)", len(links)-1)
+	if len(input) < 2 {
+		return TuiResult{}, fmt.Errorf("format invalide. Utilisez L suivi d'un numéro (ex: L0)")
 	}
 
-	fmt.Printf("\n🚀 Navigation vers : %s\n", links[idx].Href)
+	idxStr := input[1:]
+	idx, err := strconv.Atoi(idxStr)
+	if err != nil {
+		return TuiResult{}, fmt.Errorf("numéro invalide: %s", idxStr)
+	}
+
+	if idx < 0 || idx >= len(links) {
+		return TuiResult{}, fmt.Errorf("index %d hors limites (0-%d)", idx, len(links)-1)
+	}
+
+	fmt.Printf("🌐 Navigation vers: %s\n", links[idx].Href)
 	return TuiResult{NextURL: links[idx].Href}, nil
 }
 
-func handleElementSelection(input string, elements []ElementInfo) (*TuiResult, error) {
-	indices := parseIndices(input)
-	if len(indices) == 0 {
-		return nil, fmt.Errorf("Format invalide. Exemples valides : 0, 1,3,5, 0-2")
-	}
-
-	var selectors []string
-	var selectedDescs []string
-
-	for _, idx := range indices {
-		if idx >= 0 && idx < len(elements) {
-			selectors = append(selectors, elements[idx].Selector)
-			selectedDescs = append(selectedDescs, elements[idx].Description)
-		} else {
-			return nil, fmt.Errorf("Index %d invalide. Éléments disponibles : 0 à %d", idx, len(elements)-1)
-		}
-	}
-
-	if len(selectors) > 0 {
-		fmt.Printf("\n✅ Sélectionné %d élément(s) :\n", len(selectors))
-		for i, desc := range selectedDescs {
-			fmt.Printf("  %d. %s\n", i+1, desc)
-		}
-		fmt.Printf("\n💾 Ces éléments seront extraits de cette page.\n")
-		fmt.Printf("🔄 Vous pouvez continuer à naviguer ou taper 'fini' pour terminer.\n")
-
-		return &TuiResult{Selectors: selectors}, nil
-	}
-
-	return nil, fmt.Errorf("Aucun élément valide sélectionné")
-}
-
-// findMeaningfulNodes collects element nodes that contain distinct text,
-// filtering out parents that just wrap children with the same text content.
-func findMeaningfulNodes(n *html.Node) []*html.Node {
-	var nodes []*html.Node
-	var rec func(*html.Node)
-
-	rec = func(n *html.Node) {
-		if n.Type != html.ElementNode {
-			for c := n.FirstChild; c != nil; c = c.NextSibling {
-				rec(c)
-			}
-			return
-		}
-
-		// Skip non-user-friendly elements
-		tag := strings.ToLower(n.Data)
-		if isSkippableElement(tag) {
-			for c := n.FirstChild; c != nil; c = c.NextSibling {
-				rec(c)
-			}
-			return
-		}
-
-		// Get text content of this node
-		nodeText := strings.TrimSpace(previewText(n))
-
-		// Skip empty nodes but continue recursion
-		if nodeText == "" {
-			for c := n.FirstChild; c != nil; c = c.NextSibling {
-				rec(c)
-			}
-			return
-		}
-
-		// Check if this node has element children with the same text
-		hasChildWithSameText := false
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			if c.Type == html.ElementNode {
-				childText := strings.TrimSpace(previewText(c))
-				if childText == nodeText {
-					hasChildWithSameText = true
-					break
-				}
-			}
-		}
-
-		if hasChildWithSameText {
-			for c := n.FirstChild; c != nil; c = c.NextSibling {
-				rec(c)
-			}
-		} else {
-			nodes = append(nodes, n)
-		}
-	}
-	rec(n)
-	return nodes
-}
-
-// isSkippableElement retourne true pour les éléments qu'un novice ne devrait pas voir
-func isSkippableElement(tag string) bool {
-	skippable := []string{
-		"head", "meta", "title", "link", "style", "script", "noscript",
-		"base", "object", "embed", "param", "source", "track", "area", "map",
-		"colgroup", "col", "thead", "tbody", "tfoot", "option", "optgroup",
-	}
-
-	for _, skip := range skippable {
-		if tag == skip {
-			return true
-		}
-	}
-	return false
-}
-
-func enumerateElements(n *html.Node, acc []*html.Node) []*html.Node {
-	if n.Type == html.ElementNode {
-		acc = append(acc, n)
-	}
-	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		acc = enumerateElements(c, acc)
-	}
-	return acc
-}
-
-// previewText returns a short snippet of the node's text.
-func previewText(n *html.Node) string {
-	var b strings.Builder
-	var rec func(*html.Node)
-	rec = func(nd *html.Node) {
-		if nd.Type == html.TextNode {
-			trimmed := strings.TrimSpace(nd.Data)
-			if trimmed != "" {
-				b.WriteString(trimmed)
-				b.WriteString(" ")
-			}
-		}
-		for c := nd.FirstChild; c != nil; c = c.NextSibling {
-			rec(c)
-		}
-	}
-	rec(n)
-	preview := strings.TrimSpace(b.String())
-	if len(preview) > 40 {
-		preview = preview[:40] + "..."
-	}
-	return preview
-}
-
-// parseIndices converts a string like "0,2,6-9" to a slice of ints.
-func parseIndices(input string) []int {
-	var out []int
-	parts := strings.Split(input, ",")
-	for _, p := range parts {
-		p = strings.TrimSpace(p)
-		if p == "" {
-			continue
-		}
-		if strings.Contains(p, "-") {
-			rng := strings.SplitN(p, "-", 2)
-			if len(rng) != 2 {
-				continue
-			}
-			start, err1 := strconv.Atoi(strings.TrimSpace(rng[0]))
-			end, err2 := strconv.Atoi(strings.TrimSpace(rng[1]))
-			if err1 != nil || err2 != nil {
-				continue
-			}
-			if start > end {
-				start, end = end, start
-			}
-			for i := start; i <= end; i++ {
-				out = append(out, i)
-			}
-		} else {
-			idx, err := strconv.Atoi(p)
-			if err == nil {
-				out = append(out, idx)
-			}
-		}
-	}
-	return out
-}
-
-// buildSelector creates a simple selector string prioritizing #id, then first class, otherwise tag.
-func buildSelector(n *html.Node) string {
-	for _, a := range n.Attr {
-		if a.Key == "id" && a.Val != "" {
-			return "#" + a.Val
-		}
-	}
-	for _, a := range n.Attr {
-		if a.Key == "class" {
-			classes := strings.Fields(a.Val)
-			if len(classes) > 0 {
-				return "." + classes[0]
-			}
-		}
-	}
-	return n.Data
-}
-
-// categorizeElements analyse les nœuds et les classe par catégorie
-func categorizeElements(root *html.Node) []ElementInfo {
-	nodes := findMeaningfulNodes(root)
-	var elements []ElementInfo
-
-	for _, node := range nodes {
-		category, description := categorizeNode(node)
-		preview := previewText(node)
-		selector := buildSelector(node)
-
-		if preview != "" {
-			elements = append(elements, ElementInfo{
-				Node:        node,
-				Category:    category,
-				Description: description,
-				Preview:     preview,
-				Selector:    selector,
-			})
-		}
-	}
-
-	return elements
-}
-
-// categorizeNode détermine la catégorie et la description d'un nœud
-func categorizeNode(node *html.Node) (category, description string) {
-	tag := strings.ToLower(node.Data)
-	preview := previewText(node)
-
-	switch tag {
-	case "h1", "h2", "h3", "h4", "h5", "h6":
-		level := tag[1]
-		return "Titres", fmt.Sprintf("Titre niveau %s", string(level))
-
-	case "p":
-		return "Textes", "Paragraphe de texte"
-
-	case "a":
-		return "Liens", "Lien hypertexte"
-
-	case "button", "input":
-		inputType := ""
-		for _, attr := range node.Attr {
-			if attr.Key == "type" {
-				inputType = attr.Val
-				break
-			}
-		}
-		if inputType == "submit" || inputType == "button" || tag == "button" {
-			return "Boutons", "Bouton cliquable"
-		}
-		return "Autres", fmt.Sprintf("Champ de saisie (%s)", inputType)
-
-	case "img":
-		return "Images", "Image (texte alternatif)"
-
-	case "div", "section", "article", "main", "aside", "header", "footer", "nav":
-		return "Conteneurs", fmt.Sprintf("Section (%s)", tag)
-
-	case "span", "em", "strong", "b", "i":
-		return "Textes", "Texte formaté"
-
-	case "li":
-		return "Textes", "Élément de liste"
-
-	case "td", "th":
-		return "Textes", "Cellule de tableau"
-
-	default:
-		// Si c'est un élément avec du texte significatif
-		if len(strings.TrimSpace(preview)) > 10 {
-			return "Textes", fmt.Sprintf("Contenu (%s)", tag)
-		}
-		return "Autres", fmt.Sprintf("Élément %s", tag)
-	}
-}
