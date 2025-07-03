@@ -1,5 +1,12 @@
 # WebExtractor CLI
 
+[![CI/CD Pipeline](https://github.com/annaelmoussa/webextractor/actions/workflows/ci.yml/badge.svg)](https://github.com/annaelmoussa/webextractor/actions/workflows/ci.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/annaelmoussa/webextractor)](https://goreportcard.com/report/github.com/annaelmoussa/webextractor)
+[![codecov](https://codecov.io/gh/annaelmoussa/webextractor/branch/main/graph/badge.svg)](https://codecov.io/gh/annaelmoussa/webextractor)
+[![Release](https://img.shields.io/github/release/annaelmoussa/webextractor.svg)](https://github.com/annaelmoussa/webextractor/releases/latest)
+[![Go Version](https://img.shields.io/badge/go-%3E%3D1.23-blue.svg)](https://golang.org/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Un extracteur HTML minimaliste écrit en Go avec une architecture modulaire et des dépendances minimales.
 
 ## 🚀 Fonctionnalités
@@ -159,20 +166,37 @@ webextractor/
 
 ## 🧪 Développement
 
-### Tests et qualité
+### Pipeline CI/CD
+
+Le projet utilise GitHub Actions pour automatiser :
+
+- **Tests et qualité** : Exécution automatique des tests avec couverture ≥ 80%
+- **Linting** : Vérification du code avec `go vet`, `gofmt`, `golangci-lint` et `staticcheck`
+- **Build multi-plateforme** : Compilation pour Linux, macOS et Windows (AMD64 + ARM64)
+- **Scans de sécurité** : Analyse avec `gosec` et review des dépendances
+- **Releases automatiques** : Génération de binaires et archives lors des tags
+
+### Commandes de développement
 
 ```bash
+# Installation des outils de dev
+go install honnef.co/go/tools/cmd/staticcheck@latest
+go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
 # Tests avec couverture
+go test ./... -cover -race -covermode=atomic
+
+# Vérification complète (comme en CI)
+gofmt -s -l . && \
+go vet ./... && \
+staticcheck ./... && \
+golangci-lint run && \
 go test ./... -cover
 
-# Vérification statique
-go vet ./...
-
-# Formatage du code
-go fmt ./...
-
-# Pipeline complet
-go vet ./... && go fmt ./... && go test ./... -cover
+# Build multi-plateforme
+GOOS=linux GOARCH=amd64 go build -o webextractor-linux-amd64
+GOOS=darwin GOARCH=amd64 go build -o webextractor-darwin-amd64
+GOOS=windows GOARCH=amd64 go build -o webextractor-windows-amd64.exe
 ```
 
 ### Tests manuels
@@ -192,6 +216,21 @@ echo "0,2-4" | ./webextractor -url https://example.com
 
 # Test navigation
 echo "L0" | ./webextractor -url https://example.com
+```
+
+### Processus de release
+
+1. **Développement** : Travail sur une branche feature
+2. **Pull Request** : Tests automatiques et review
+3. **Merge** : Intégration en `main` après validation
+4. **Tag** : Création d'un tag `v1.2.3` pour déclencher la release
+5. **Release automatique** : Génération des binaires et publication
+
+```bash
+# Créer une release
+git tag v1.0.0
+git push origin v1.0.0
+# → Déclenche automatiquement la création de la release avec binaires
 ```
 
 ## 📦 Dépendances

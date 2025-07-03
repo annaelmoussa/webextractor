@@ -1,34 +1,41 @@
-# Binaries built by Go
+# Binaires
+webextractor
+webextractor-*
 *.exe
-*.exe~
-*.dll
-*.so
-*.dylib
+
+# Artéfacts de test et couverture
+coverage.out
+coverage.html
 *.test
 
-# Output binary for this project
-/webextractor/webextractor
+# Dossiers de build
+dist/
+build/
 
-# Coverage and profiling files
-*.out
-*.coverprofile
-cover.out
-coverage.out
-
-# Dependency directories (vendor, if ever used)
-vendor/
-
-# IDE and editor configuration files
-.idea/
-.vscode/
-
-# System files
-.DS_Store
-
-# Cursor extension metadata
-.cursor/
-
-# Temporary files
+# Fichiers temporaires
 *.tmp
+*.log
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
 *.swp
-*~ 
+*.swo
+*~
+
+# Go workspace
+go.work
+go.work.sum
+
+# Environnement local
+.env
+.env.local 
