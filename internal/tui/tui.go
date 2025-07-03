@@ -40,23 +40,38 @@ type ImageInfo struct {
 	Alt string
 }
 
-// ElementCategory représente une catégorie d'éléments sélectionnables
-type ElementCategory struct {
-	Name        string
-	Icon        string
-	Key         string
-	Elements    []string
-	Description string
+// SelectableElement représente un élément individuel sélectionnable
+type SelectableElement struct {
+	Index       int
+	Type        string // "title", "h1", "h2", "h3", "p", "link", "image", "list"
+	Content     string
+	FullContent string      // Contenu complet pour les éléments tronqués
+	Data        interface{} // Données associées (ex: URL pour les liens)
+}
+
+// SelectionState garde l'état des sélections en cours
+type SelectionState struct {
+	Elements []SelectableElement
+	Selected []bool
+	PageInfo PageInfo
 }
 
 // PromptSelectors enters an interactive session where the user can pick elements
-// by category and see a structured preview of the page content.
+// individually and combine selections across different categories.
 func PromptSelectors(root *html.Node, currentURL *url.URL) (TuiResult, error) {
 	pageInfo := extractPageInfo(root, currentURL)
+	elements := buildSelectableElements(pageInfo)
+	state := SelectionState{
+		Elements: elements,
+		Selected: make([]bool, len(elements)),
+		PageInfo: pageInfo,
+	}
+
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
-		printStructuredPage(pageInfo)
+		printSelectableElements(state)
+		printSelectionStatus(state)
 		printSelectionMenu()
 
 		fmt.Print("\n🎯 Votre choix : ")
@@ -70,7 +85,15 @@ func PromptSelectors(root *html.Node, currentURL *url.URL) (TuiResult, error) {
 			continue
 
 		case strings.ToLower(line) == "fini" || strings.ToLower(line) == "done" || strings.ToLower(line) == "terminer":
-			return handleFinish()
+			return handleFinishWithSelections(state)
+
+		case strings.ToLower(line) == "reset" || strings.ToLower(line) == "clear":
+			// Réinitialiser toutes les sélections
+			for i := range state.Selected {
+				state.Selected[i] = false
+			}
+			fmt.Printf("🔄 Toutes les sélections effacées\n")
+			continue
 
 		case strings.HasPrefix(strings.ToLower(line), "l"):
 			result, err := handleLinkNavigation(line, pageInfo.Links)
@@ -81,16 +104,18 @@ func PromptSelectors(root *html.Node, currentURL *url.URL) (TuiResult, error) {
 			return result, nil
 
 		case strings.ToLower(line) == "all" || strings.ToLower(line) == "tout":
-			return handleSelectAll(pageInfo), nil
+			// Sélectionner tous les éléments
+			for i := range state.Selected {
+				state.Selected[i] = true
+			}
+			fmt.Printf("✅ Tous les éléments sélectionnés !\n")
+			continue
 
 		default:
-			result, err := handleCategorySelection(line, pageInfo)
+			err := handleIndexSelection(line, &state)
 			if err != nil {
 				fmt.Printf("❌ %s\n", err)
 				continue
-			}
-			if result != nil {
-				return *result, nil
 			}
 		}
 	}
@@ -191,302 +216,403 @@ func extractPageInfo(root *html.Node, currentURL *url.URL) PageInfo {
 	return info
 }
 
-func printStructuredPage(info PageInfo) {
-	fmt.Printf("\n" + strings.Repeat("=", 70) + "\n")
-	fmt.Printf("📄 Page: %s\n\n", info.URL)
+func buildSelectableElements(info PageInfo) []SelectableElement {
+	var elements []SelectableElement
+	index := 0
 
-	// Titre de la page
+	// Titre
 	if info.Title != "" {
-		fmt.Printf("🌐 Title: %s\n", info.Title)
+		elements = append(elements, SelectableElement{
+			Index:       index,
+			Type:        "title",
+			Content:     truncateText(info.Title, 80),
+			FullContent: info.Title,
+			Data:        info.Title,
+		})
+		index++
 	}
 
 	// H1
-	if len(info.H1) > 0 {
-		fmt.Printf("🔠 H1:\n")
-		for _, h1 := range info.H1 {
-			fmt.Printf(" - %s\n", h1)
-		}
+	for _, h1 := range info.H1 {
+		elements = append(elements, SelectableElement{
+			Index:       index,
+			Type:        "h1",
+			Content:     truncateText(h1, 80),
+			FullContent: h1,
+			Data:        h1,
+		})
+		index++
 	}
 
 	// H2
-	if len(info.H2) > 0 {
-		fmt.Printf("📰 H2:\n")
-		for _, h2 := range info.H2 {
-			fmt.Printf(" - %s\n", h2)
-		}
+	for _, h2 := range info.H2 {
+		elements = append(elements, SelectableElement{
+			Index:       index,
+			Type:        "h2",
+			Content:     truncateText(h2, 80),
+			FullContent: h2,
+			Data:        h2,
+		})
+		index++
 	}
 
 	// H3
-	if len(info.H3) > 0 {
-		fmt.Printf("📋 H3:\n")
-		for _, h3 := range info.H3 {
-			fmt.Printf(" - %s\n", h3)
-		}
+	for _, h3 := range info.H3 {
+		elements = append(elements, SelectableElement{
+			Index:       index,
+			Type:        "h3",
+			Content:     truncateText(h3, 80),
+			FullContent: h3,
+			Data:        h3,
+		})
+		index++
 	}
 
 	// Paragraphes
-	if len(info.Paragraphs) > 0 {
-		fmt.Printf("📝 Paragraphs:\n")
-		for i, p := range info.Paragraphs {
-			if i < 5 { // Limiter l'affichage à 5 paragraphes
-				preview := p
-				if len(preview) > 100 {
-					preview = preview[:97] + "..."
-				}
-				fmt.Printf(" - %s\n", preview)
-			}
-		}
-		if len(info.Paragraphs) > 5 {
-			fmt.Printf(" ... et %d autres paragraphes\n", len(info.Paragraphs)-5)
-		}
+	for _, p := range info.Paragraphs {
+		elements = append(elements, SelectableElement{
+			Index:       index,
+			Type:        "p",
+			Content:     truncateText(p, 80),
+			FullContent: p,
+			Data:        p,
+		})
+		index++
 	}
 
 	// Liens
-	if len(info.Links) > 0 {
-		fmt.Printf("🔗 Links:\n")
-		for i, link := range info.Links {
-			if i < 5 { // Limiter l'affichage à 5 liens
-				fmt.Printf(" - %s (%s)\n", link.Text, link.Href)
-			}
-		}
-		if len(info.Links) > 5 {
-			fmt.Printf(" ... et %d autres liens\n", len(info.Links)-5)
-		}
+	for _, link := range info.Links {
+		linkText := fmt.Sprintf("%s (%s)", link.Text, link.Href)
+		elements = append(elements, SelectableElement{
+			Index:       index,
+			Type:        "link",
+			Content:     truncateText(linkText, 80),
+			FullContent: linkText,
+			Data:        link,
+		})
+		index++
 	}
 
 	// Images
-	if len(info.Images) > 0 {
-		fmt.Printf("🖼️ Images:\n")
-		for i, img := range info.Images {
-			if i < 3 { // Limiter l'affichage à 3 images
-				alt := img.Alt
-				if alt == "" {
-					alt = "Sans description"
-				}
-				fmt.Printf(" - %s (%s)\n", alt, img.Src)
-			}
+	for _, img := range info.Images {
+		alt := img.Alt
+		if alt == "" {
+			alt = "Sans description"
 		}
-		if len(info.Images) > 3 {
-			fmt.Printf(" ... et %d autres images\n", len(info.Images)-3)
-		}
+		imgText := fmt.Sprintf("%s (%s)", alt, img.Src)
+		elements = append(elements, SelectableElement{
+			Index:       index,
+			Type:        "image",
+			Content:     truncateText(imgText, 80),
+			FullContent: imgText,
+			Data:        img,
+		})
+		index++
 	}
 
 	// Listes
-	if len(info.Lists) > 0 {
-		fmt.Printf("📄 Lists:\n")
-		for i, list := range info.Lists {
-			if i < 3 { // Limiter l'affichage à 3 listes
-				preview := list
-				if len(preview) > 80 {
-					preview = preview[:77] + "..."
-				}
-				fmt.Printf(" - %s\n", preview)
-			}
+	for _, list := range info.Lists {
+		elements = append(elements, SelectableElement{
+			Index:       index,
+			Type:        "list",
+			Content:     truncateText(list, 80),
+			FullContent: list,
+			Data:        list,
+		})
+		index++
+	}
+
+	return elements
+}
+
+func truncateText(text string, maxLen int) string {
+	if len(text) <= maxLen {
+		return text
+	}
+	return text[:maxLen-3] + "..."
+}
+
+func printSelectableElements(state SelectionState) {
+	fmt.Printf("\n" + strings.Repeat("=", 70) + "\n")
+	fmt.Printf("📄 Page: %s\n", state.PageInfo.URL)
+	fmt.Printf("📝 ÉLÉMENTS SÉLECTIONNABLES :\n")
+	fmt.Printf(strings.Repeat("=", 70) + "\n")
+
+	for i, elem := range state.Elements {
+		selectedMark := " "
+		if state.Selected[i] {
+			selectedMark = "✅"
 		}
-		if len(info.Lists) > 3 {
-			fmt.Printf(" ... et %d autres listes\n", len(info.Lists)-3)
+
+		var icon string
+		switch elem.Type {
+		case "title":
+			icon = "🌐"
+		case "h1":
+			icon = "🔠"
+		case "h2":
+			icon = "📰"
+		case "h3":
+			icon = "📋"
+		case "p":
+			icon = "📝"
+		case "link":
+			icon = "🔗"
+		case "image":
+			icon = "🖼️"
+		case "list":
+			icon = "📄"
+		default:
+			icon = "📌"
+		}
+
+		fmt.Printf("%s [%2d] %s %s %s\n", selectedMark, i, icon, strings.ToUpper(elem.Type), elem.Content)
+	}
+	fmt.Printf(strings.Repeat("=", 70) + "\n")
+}
+
+func printSelectionStatus(state SelectionState) {
+	selectedCount := 0
+	for _, selected := range state.Selected {
+		if selected {
+			selectedCount++
 		}
 	}
 
-	fmt.Printf("\n" + strings.Repeat("=", 70) + "\n")
+	if selectedCount > 0 {
+		fmt.Printf("\n📊 SÉLECTIONS ACTUELLES : %d élément(s) sélectionné(s)\n", selectedCount)
+
+		// Grouper par type pour l'affichage
+		typeCount := make(map[string]int)
+		for i, elem := range state.Elements {
+			if state.Selected[i] {
+				typeCount[elem.Type]++
+			}
+		}
+
+		var parts []string
+		for elemType, count := range typeCount {
+			var icon string
+			switch elemType {
+			case "title":
+				icon = "🌐"
+			case "h1":
+				icon = "🔠"
+			case "h2":
+				icon = "📰"
+			case "h3":
+				icon = "📋"
+			case "p":
+				icon = "📝"
+			case "link":
+				icon = "🔗"
+			case "image":
+				icon = "🖼️"
+			case "list":
+				icon = "📄"
+			}
+			parts = append(parts, fmt.Sprintf("%s %s(%d)", icon, elemType, count))
+		}
+		fmt.Printf("  → %s\n", strings.Join(parts, ", "))
+	} else {
+		fmt.Printf("\n📊 Aucun élément sélectionné pour le moment\n")
+	}
 }
 
 func printSelectionMenu() {
-	fmt.Printf("\n📝 SÉLECTIONNER LES ÉLÉMENTS À EXTRAIRE :\n")
-	fmt.Printf("  [title]     🌐 Titre de la page\n")
-	fmt.Printf("  [h1]        🔠 Tous les titres H1\n")
-	fmt.Printf("  [h2]        📰 Tous les titres H2\n")
-	fmt.Printf("  [h3]        📋 Tous les titres H3\n")
-	fmt.Printf("  [p]         📝 Tous les paragraphes\n")
-	fmt.Printf("  [links]     🔗 Tous les liens\n")
-	fmt.Printf("  [images]    🖼️ Toutes les images\n")
-	fmt.Printf("  [lists]     📄 Toutes les listes\n")
-	fmt.Printf("  [all]       ✨ Tous les éléments\n")
-	fmt.Printf("  [L0,L1...]  🌐 Naviguer vers un lien (L0 = premier lien)\n")
-	fmt.Printf("  [fini]      ✅ Terminer et générer le JSON\n")
-	fmt.Printf("  [aide]      ❓ Afficher l'aide\n")
+	fmt.Printf("\n📝 OPTIONS DE SÉLECTION :\n")
+	fmt.Printf("  • Indices individuels : 0, 5, 12\n")
+	fmt.Printf("  • Plages d'indices : 0-5, 10-15\n")
+	fmt.Printf("  • Combinaisons : 0,3,7-9,15\n")
+	fmt.Printf("  • [all]    ✨ Sélectionner tous les éléments\n")
+	fmt.Printf("  • [reset]  🔄 Effacer toutes les sélections\n")
+	fmt.Printf("  • [L0,L1]  🌐 Naviguer vers un lien\n")
+	fmt.Printf("  • [fini]   ✅ Terminer et générer le JSON\n")
+	fmt.Printf("  • [aide]   ❓ Afficher l'aide détaillée\n")
 }
 
 func printHelp() {
 	fmt.Printf("\n" + strings.Repeat("*", 60) + "\n")
-	fmt.Printf("🆘 AIDE DÉTAILLÉE\n")
+	fmt.Printf("🆘 AIDE DÉTAILLÉE - SÉLECTION GRANULAIRE\n")
 	fmt.Printf(strings.Repeat("*", 60) + "\n")
-	fmt.Printf("\n🎯 COMMENT UTILISER L'INTERFACE :\n")
-	fmt.Printf("1. Examinez la structure de la page affichée ci-dessus\n")
-	fmt.Printf("2. Sélectionnez les éléments que vous voulez extraire\n")
-	fmt.Printf("3. Tapez 'fini' pour générer le JSON final\n")
+
+	fmt.Printf("\n🎯 PRINCIPE :\n")
+	fmt.Printf("Chaque élément de la page a un numéro [0, 1, 2, ...]\n")
+	fmt.Printf("Vous pouvez sélectionner exactement les éléments que vous voulez.\n")
 
 	fmt.Printf("\n📋 EXEMPLES DE SÉLECTION :\n")
-	fmt.Printf("  → 'title' pour extraire uniquement le titre\n")
-	fmt.Printf("  → 'h1' pour extraire tous les H1\n")
-	fmt.Printf("  → 'p' pour extraire tous les paragraphes\n")
-	fmt.Printf("  → 'links' pour extraire tous les liens\n")
-	fmt.Printf("  → 'all' pour extraire tous les éléments\n")
+	fmt.Printf("  → '0' pour sélectionner uniquement l'élément 0\n")
+	fmt.Printf("  → '0,3,5' pour sélectionner les éléments 0, 3 et 5\n")
+	fmt.Printf("  → '0-5' pour sélectionner les éléments 0 à 5 inclus\n")
+	fmt.Printf("  → '0,3-7,10' pour combiner individuels et plages\n")
+	fmt.Printf("  → 'all' pour sélectionner tous les éléments\n")
+	fmt.Printf("  → 'reset' pour effacer toutes les sélections\n")
 
-	fmt.Printf("\n🌐 NAVIGATION :\n")
-	fmt.Printf("  → 'L0' pour aller au premier lien\n")
-	fmt.Printf("  → 'L1' pour aller au deuxième lien, etc.\n")
+	fmt.Printf("\n💡 STRATÉGIE RECOMMANDÉE :\n")
+	fmt.Printf("1. Examinez la liste numérotée des éléments\n")
+	fmt.Printf("2. Notez les numéros des éléments qui vous intéressent\n")
+	fmt.Printf("3. Sélectionnez-les par indices ou plages\n")
+	fmt.Printf("4. Vérifiez vos sélections dans le résumé\n")
+	fmt.Printf("5. Ajoutez/retirez des éléments si nécessaire\n")
+	fmt.Printf("6. Tapez 'fini' pour générer le JSON\n")
 
 	fmt.Printf("\n📤 RÉSULTAT :\n")
-	fmt.Printf("Le JSON généré contiendra les clés correspondant aux éléments\n")
-	fmt.Printf("sélectionnés (title, h1, paragraphs, links, etc.)\n")
+	fmt.Printf("Le JSON contiendra uniquement les éléments que vous avez\n")
+	fmt.Printf("spécifiquement sélectionnés, organisés par type.\n")
 
 	fmt.Printf("\n" + strings.Repeat("*", 60) + "\n")
 }
 
-func handleSelectAll(info PageInfo) TuiResult {
+func handleIndexSelection(input string, state *SelectionState) error {
+	indices, err := parseIndices(input, len(state.Elements))
+	if err != nil {
+		return fmt.Errorf("format invalide: %v\nUtilisez des indices (0,1,2) ou plages (0-5)", err)
+	}
+
+	selectedCount := 0
+	for _, idx := range indices {
+		if !state.Selected[idx] {
+			state.Selected[idx] = true
+			selectedCount++
+		}
+	}
+
+	fmt.Printf("✅ %d élément(s) sélectionné(s) : %v\n", selectedCount, indices)
+	return nil
+}
+
+func parseIndices(input string, maxIndex int) ([]int, error) {
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return nil, fmt.Errorf("entrée vide")
+	}
+
+	var indices []int
+	parts := strings.Split(input, ",")
+
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if strings.Contains(part, "-") {
+			// Plage (ex: "3-7")
+			rangeParts := strings.Split(part, "-")
+			if len(rangeParts) != 2 {
+				return nil, fmt.Errorf("format de plage invalide: %s", part)
+			}
+
+			start, err := strconv.Atoi(strings.TrimSpace(rangeParts[0]))
+			if err != nil {
+				return nil, fmt.Errorf("début de plage invalide: %s", rangeParts[0])
+			}
+
+			end, err := strconv.Atoi(strings.TrimSpace(rangeParts[1]))
+			if err != nil {
+				return nil, fmt.Errorf("fin de plage invalide: %s", rangeParts[1])
+			}
+
+			if start < 0 || end >= maxIndex || start > end {
+				return nil, fmt.Errorf("plage invalide: %d-%d (doit être entre 0 et %d)", start, end, maxIndex-1)
+			}
+
+			for i := start; i <= end; i++ {
+				indices = append(indices, i)
+			}
+		} else {
+			// Index individuel
+			idx, err := strconv.Atoi(part)
+			if err != nil {
+				return nil, fmt.Errorf("index invalide: %s", part)
+			}
+
+			if idx < 0 || idx >= maxIndex {
+				return nil, fmt.Errorf("index %d hors limites (0-%d)", idx, maxIndex-1)
+			}
+
+			indices = append(indices, idx)
+		}
+	}
+
+	// Supprimer les doublons
+	uniqueIndices := make([]int, 0, len(indices))
+	seen := make(map[int]bool)
+	for _, idx := range indices {
+		if !seen[idx] {
+			uniqueIndices = append(uniqueIndices, idx)
+			seen[idx] = true
+		}
+	}
+
+	return uniqueIndices, nil
+}
+
+func handleFinishWithSelections(state SelectionState) (TuiResult, error) {
 	selectedData := make(map[string]interface{})
 	var selectors []string
 
-	if info.Title != "" {
-		selectedData["title"] = info.Title
-		selectors = append(selectors, "title")
-	}
-	if len(info.H1) > 0 {
-		selectedData["h1"] = info.H1
-		selectors = append(selectors, "h1")
-	}
-	if len(info.H2) > 0 {
-		selectedData["h2"] = info.H2
-		selectors = append(selectors, "h2")
-	}
-	if len(info.H3) > 0 {
-		selectedData["h3"] = info.H3
-		selectors = append(selectors, "h3")
-	}
-	if len(info.Paragraphs) > 0 {
-		selectedData["paragraphs"] = info.Paragraphs
-		selectors = append(selectors, "p")
-	}
-	if len(info.Links) > 0 {
-		linkUrls := make([]string, len(info.Links))
-		for i, link := range info.Links {
-			linkUrls[i] = link.Href
+	// Organiser les éléments sélectionnés par type
+	selectedByType := make(map[string][]interface{})
+
+	for i, elem := range state.Elements {
+		if state.Selected[i] {
+			switch elem.Type {
+			case "title":
+				selectedData["title"] = elem.Data.(string)
+				selectors = append(selectors, "title")
+
+			case "h1":
+				selectedByType["h1"] = append(selectedByType["h1"], elem.Data)
+
+			case "h2":
+				selectedByType["h2"] = append(selectedByType["h2"], elem.Data)
+
+			case "h3":
+				selectedByType["h3"] = append(selectedByType["h3"], elem.Data)
+
+			case "p":
+				selectedByType["paragraphs"] = append(selectedByType["paragraphs"], elem.Data)
+
+			case "link":
+				link := elem.Data.(parser.Link)
+				selectedByType["links"] = append(selectedByType["links"], link.Href)
+
+			case "image":
+				img := elem.Data.(ImageInfo)
+				selectedByType["images"] = append(selectedByType["images"], img.Src)
+
+			case "list":
+				selectedByType["lists"] = append(selectedByType["lists"], elem.Data)
+			}
 		}
-		selectedData["links"] = linkUrls
-		selectors = append(selectors, "links")
-	}
-	if len(info.Images) > 0 {
-		imageSrcs := make([]string, len(info.Images))
-		for i, img := range info.Images {
-			imageSrcs[i] = img.Src
-		}
-		selectedData["images"] = imageSrcs
-		selectors = append(selectors, "images")
-	}
-	if len(info.Lists) > 0 {
-		selectedData["lists"] = info.Lists
-		selectors = append(selectors, "lists")
 	}
 
-	fmt.Printf("✅ Tous les éléments sélectionnés !\n")
+	// Convertir en slices typées
+	for elemType, items := range selectedByType {
+		var stringSlice []string
+		for _, item := range items {
+			stringSlice = append(stringSlice, item.(string))
+		}
+		selectedData[elemType] = stringSlice
+		selectors = append(selectors, elemType)
+	}
+
+	selectedCount := len(selectors)
+	if _, hasTitle := selectedData["title"]; hasTitle {
+		selectedCount += len(selectedByType) - 1 // -1 car le titre est déjà compté
+	} else {
+		selectedCount = len(selectedByType)
+	}
+
+	if selectedCount == 0 {
+		fmt.Printf("⚠️ Aucun élément sélectionné.\n")
+		return TuiResult{Finished: false}, nil
+	}
+
+	fmt.Printf("✅ Session terminée avec %d élément(s) sélectionné(s)!\n", selectedCount)
+
 	return TuiResult{
 		Selectors:    selectors,
 		SelectedData: selectedData,
 		Finished:     true,
-	}
-}
-
-func handleCategorySelection(input string, info PageInfo) (*TuiResult, error) {
-	input = strings.ToLower(strings.TrimSpace(input))
-	selectedData := make(map[string]interface{})
-	var selectors []string
-
-	switch input {
-	case "title":
-		if info.Title != "" {
-			selectedData["title"] = info.Title
-			selectors = append(selectors, "title")
-			fmt.Printf("✅ Titre sélectionné: %s\n", info.Title)
-		} else {
-			return nil, fmt.Errorf("aucun titre trouvé sur cette page")
-		}
-
-	case "h1":
-		if len(info.H1) > 0 {
-			selectedData["h1"] = info.H1
-			selectors = append(selectors, "h1")
-			fmt.Printf("✅ %d titre(s) H1 sélectionné(s)\n", len(info.H1))
-		} else {
-			return nil, fmt.Errorf("aucun H1 trouvé sur cette page")
-		}
-
-	case "h2":
-		if len(info.H2) > 0 {
-			selectedData["h2"] = info.H2
-			selectors = append(selectors, "h2")
-			fmt.Printf("✅ %d titre(s) H2 sélectionné(s)\n", len(info.H2))
-		} else {
-			return nil, fmt.Errorf("aucun H2 trouvé sur cette page")
-		}
-
-	case "h3":
-		if len(info.H3) > 0 {
-			selectedData["h3"] = info.H3
-			selectors = append(selectors, "h3")
-			fmt.Printf("✅ %d titre(s) H3 sélectionné(s)\n", len(info.H3))
-		} else {
-			return nil, fmt.Errorf("aucun H3 trouvé sur cette page")
-		}
-
-	case "p", "paragraphs":
-		if len(info.Paragraphs) > 0 {
-			selectedData["paragraphs"] = info.Paragraphs
-			selectors = append(selectors, "p")
-			fmt.Printf("✅ %d paragraphe(s) sélectionné(s)\n", len(info.Paragraphs))
-		} else {
-			return nil, fmt.Errorf("aucun paragraphe trouvé sur cette page")
-		}
-
-	case "links":
-		if len(info.Links) > 0 {
-			linkUrls := make([]string, len(info.Links))
-			for i, link := range info.Links {
-				linkUrls[i] = link.Href
-			}
-			selectedData["links"] = linkUrls
-			selectors = append(selectors, "links")
-			fmt.Printf("✅ %d lien(s) sélectionné(s)\n", len(info.Links))
-		} else {
-			return nil, fmt.Errorf("aucun lien trouvé sur cette page")
-		}
-
-	case "images":
-		if len(info.Images) > 0 {
-			imageSrcs := make([]string, len(info.Images))
-			for i, img := range info.Images {
-				imageSrcs[i] = img.Src
-			}
-			selectedData["images"] = imageSrcs
-			selectors = append(selectors, "images")
-			fmt.Printf("✅ %d image(s) sélectionnée(s)\n", len(info.Images))
-		} else {
-			return nil, fmt.Errorf("aucune image trouvée sur cette page")
-		}
-
-	case "lists":
-		if len(info.Lists) > 0 {
-			selectedData["lists"] = info.Lists
-			selectors = append(selectors, "lists")
-			fmt.Printf("✅ %d liste(s) sélectionnée(s)\n", len(info.Lists))
-		} else {
-			return nil, fmt.Errorf("aucune liste trouvée sur cette page")
-		}
-
-	default:
-		return nil, fmt.Errorf("sélection '%s' non reconnue. Tapez 'aide' pour voir les options", input)
-	}
-
-	return &TuiResult{
-		Selectors:    selectors,
-		SelectedData: selectedData,
-		Finished:     true,
 	}, nil
-}
-
-func handleFinish() (TuiResult, error) {
-	fmt.Printf("✅ Session terminée.\n")
-	return TuiResult{Finished: true}, nil
 }
 
 func handleLinkNavigation(input string, links []parser.Link) (TuiResult, error) {
@@ -507,4 +633,3 @@ func handleLinkNavigation(input string, links []parser.Link) (TuiResult, error) 
 	fmt.Printf("🌐 Navigation vers: %s\n", links[idx].Href)
 	return TuiResult{NextURL: links[idx].Href}, nil
 }
-
