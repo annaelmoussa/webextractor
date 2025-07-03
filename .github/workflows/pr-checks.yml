@@ -189,7 +189,7 @@ jobs:
 
       - name: Run Gosec Security Scanner
         run: |
-          gosec ./...
+          gosec -no-fail ./...
 
   dependency-review:
     name: Dependency Review

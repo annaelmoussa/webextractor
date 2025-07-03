@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 )
 
 // Result represents one extraction result.
@@ -31,11 +33,39 @@ type StructuredResult struct {
 	Lists      []string `json:"lists,omitempty"`
 }
 
+// validateOutputPath checks if the output path is safe to write to
+func validateOutputPath(path string) error {
+	if path == "-" || path == "" {
+		return nil
+	}
+
+	// Clean the path to prevent directory traversal
+	cleanPath := filepath.Clean(path)
+
+	// Check for directory traversal attempts
+	if strings.Contains(cleanPath, "..") {
+		return fmt.Errorf("invalid path: directory traversal not allowed")
+	}
+
+	// Ensure we're not trying to write to system directories
+	if strings.HasPrefix(cleanPath, "/etc/") ||
+		strings.HasPrefix(cleanPath, "/usr/") ||
+		strings.HasPrefix(cleanPath, "/var/") {
+		return fmt.Errorf("invalid path: cannot write to system directories")
+	}
+
+	return nil
+}
+
 // Write writes the result to the given file path ("-" means stdout).
 func Write(path string, doc DocumentResult) error {
+	if err := validateOutputPath(path); err != nil {
+		return fmt.Errorf("output path validation failed: %w", err)
+	}
+
 	enc := json.NewEncoder(os.Stdout)
 	if path != "-" && path != "" {
-		file, err := os.Create(path)
+		file, err := os.Create(path) // #nosec G304 - path validated above
 		if err != nil {
 			return err
 		}
@@ -51,9 +81,13 @@ func Write(path string, doc DocumentResult) error {
 
 // WriteStructured writes the structured result to the given file path ("-" means stdout).
 func WriteStructured(path string, doc StructuredResult) error {
+	if err := validateOutputPath(path); err != nil {
+		return fmt.Errorf("output path validation failed: %w", err)
+	}
+
 	enc := json.NewEncoder(os.Stdout)
 	if path != "-" && path != "" {
-		file, err := os.Create(path)
+		file, err := os.Create(path) // #nosec G304 - path validated above
 		if err != nil {
 			return err
 		}
