@@ -20,7 +20,7 @@ type DocumentResult struct {
 	Results []Result `json:"results"`
 }
 
-// StructuredResult represents the structured output format requested by the user
+// StructuredResult represents the structured output format.
 type StructuredResult struct {
 	URL        string   `json:"url"`
 	Title      string   `json:"title,omitempty"`
@@ -33,24 +33,20 @@ type StructuredResult struct {
 	Lists      []string `json:"lists,omitempty"`
 }
 
-// validateOutputPath checks if the output path is safe to write to
 func validateOutputPath(path string) error {
 	if path == "-" || path == "" {
 		return nil
 	}
 
-	// Clean the path to prevent directory traversal
 	cleanPath := filepath.Clean(path)
 
-	// Check for directory traversal attempts
 	if strings.Contains(cleanPath, "..") {
 		return fmt.Errorf("invalid path: directory traversal not allowed")
 	}
 
-	// Ensure we're not trying to write to system directories
 	if strings.HasPrefix(cleanPath, "/etc/") ||
 		strings.HasPrefix(cleanPath, "/usr/") ||
-		strings.HasPrefix(cleanPath, "/var/") {
+		(strings.HasPrefix(cleanPath, "/var/") && !strings.HasPrefix(cleanPath, "/var/folders/")) {
 		return fmt.Errorf("invalid path: cannot write to system directories")
 	}
 

@@ -39,7 +39,6 @@ func TestCLI(t *testing.T) {
 }
 
 func TestURLParsing(t *testing.T) {
-	// Test de validation d'URL (composant de interactiveSession)
 	_, err := parseURL("://invalid-url")
 	if err == nil {
 		t.Errorf("Expected error for invalid URL")
@@ -54,13 +53,11 @@ func TestURLParsing(t *testing.T) {
 	}
 }
 
-// Helper function pour tester le parsing d'URL (extrait du code de interactiveSession)
 func parseURL(urlStr string) (*url.URL, error) {
 	return url.Parse(urlStr)
 }
 
 func TestSelectorParsing(t *testing.T) {
-	// Test le parsing de sélecteurs multiples (composant de main)
 	selectors := strings.Split("div,.content,p", ",")
 
 	if len(selectors) != 3 {
@@ -76,7 +73,6 @@ func TestSelectorParsing(t *testing.T) {
 }
 
 func TestEmptySelectorHandling(t *testing.T) {
-	// Test la gestion des sélecteurs vides
 	selectors := strings.Split("div, , p", ",")
 	var cleaned []string
 
@@ -93,7 +89,6 @@ func TestEmptySelectorHandling(t *testing.T) {
 }
 
 func TestStructuredDataProcessing(t *testing.T) {
-	// Test la transformation de structuredData en StructuredResult
 	structuredData := map[string]interface{}{
 		"title":      "Test Title",
 		"h1":         []string{"H1 Title"},
@@ -104,7 +99,6 @@ func TestStructuredDataProcessing(t *testing.T) {
 		"lists":      []string{"List item 1 | List item 2"},
 	}
 
-	// Simuler la création d'un StructuredResult
 	result := ioLib.StructuredResult{URL: "https://test.com"}
 
 	if title, ok := structuredData["title"].(string); ok {
@@ -129,7 +123,6 @@ func TestStructuredDataProcessing(t *testing.T) {
 		result.Lists = lists
 	}
 
-	// Vérifications
 	if result.Title != "Test Title" {
 		t.Errorf("Expected title 'Test Title', got '%s'", result.Title)
 	}
@@ -148,7 +141,6 @@ func TestStructuredDataProcessing(t *testing.T) {
 }
 
 func TestSelectorDeduplication(t *testing.T) {
-	// Test la déduplication des sélecteurs (code de interactiveSession)
 	collectedSelectors := []string{"div", "p", "div", ".class", "p", "span"}
 
 	uniqueSelectors := make(map[string]struct{})
@@ -161,7 +153,7 @@ func TestSelectorDeduplication(t *testing.T) {
 		finalSelectors = append(finalSelectors, s)
 	}
 
-	if len(finalSelectors) != 4 { // div, p, .class, span
+	if len(finalSelectors) != 4 {
 		t.Fatalf("Expected 4 unique selectors, got %d", len(finalSelectors))
 	}
 }

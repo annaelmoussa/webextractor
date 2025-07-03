@@ -69,13 +69,11 @@ func TestFindLinks(t *testing.T) {
 
 	links := FindLinks(doc)
 
-	// Should find 4 links (excluding the one without href)
 	expectedCount := 4
 	if len(links) != expectedCount {
 		t.Fatalf("Expected %d links, got %d", expectedCount, len(links))
 	}
 
-	// Test specific links
 	expectedLinks := map[string]string{
 		"https://example.com":     "Example Link",
 		"/internal-link":          "Internal Link",

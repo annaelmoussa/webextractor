@@ -79,7 +79,6 @@ func TestWriteStructured(t *testing.T) {
 		t.Fatalf("h1 missing in output")
 	}
 
-	// Test file output
 	tmp, err := os.CreateTemp("", "we_structured.json")
 	if err != nil {
 		t.Fatalf("temp file: %v", err)
@@ -102,6 +101,5 @@ func TestWriteStructured(t *testing.T) {
 		t.Fatalf("title missing in file")
 	}
 
-	// Clean up
 	os.Remove(tmp.Name())
 }

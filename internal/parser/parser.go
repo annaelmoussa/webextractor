@@ -10,11 +10,6 @@ import (
 type MatchFunc func(n *html.Node) bool
 
 // Compile builds a MatchFunc from a simple selector string.
-// Supported syntax:
-//
-//	tag          — matches element tag name
-//	.class       — matches element with given class (space separated list)
-//	#id          — matches element with given id.
 func Compile(selector string) MatchFunc {
 	selector = strings.TrimSpace(selector)
 	if selector == "" {

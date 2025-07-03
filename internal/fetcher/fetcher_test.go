@@ -52,11 +52,7 @@ func TestFetchInvalidHTML(t *testing.T) {
 	defer srv.Close()
 
 	f := New(5 * time.Second)
-	// Note: golang.org/x/net/html est assez tolérant,
-	// mais on peut tester avec du contenu vraiment cassé
 	doc, err := f.Fetch(srv.URL)
-	// Le parser HTML de Go est très tolérant, donc même du HTML invalide peut passer
-	// On teste juste que ça ne plante pas
 	if err != nil && doc == nil {
 		t.Logf("HTML parse handled gracefully: %v", err)
 	}
