@@ -32,6 +32,9 @@ Thumbs.db
 *.swo
 *~
 
+# Cursor extension metadata
+.cursor/
+
 # Go workspace
 go.work
 go.work.sum

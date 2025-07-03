@@ -381,7 +381,7 @@ func TestTruncateText(t *testing.T) {
 		{"this is a very long text that should be truncated", 20, "this is a very lo..."},
 		{"", 5, ""},
 		{"abc", 3, "abc"},
-		{"abcd", 3, "..."},  // 4 chars with max 3 should become "..."
+		{"abcd", 3, "..."}, // 4 chars with max 3 should become "..."
 		{"a very long text", 10, "a very ..."},
 	}
 
