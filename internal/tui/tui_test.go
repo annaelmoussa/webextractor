@@ -81,6 +81,44 @@ func TestExtractPageInfo(t *testing.T) {
 	}
 }
 
+func TestPrintFunctions(t *testing.T) {
+	// Test des fonctions d'affichage en capturant stdout
+	// Créer un état de test simple
+	elements := []SelectableElement{
+		{Index: 0, Type: "title", Content: "Test Title"},
+		{Index: 1, Type: "h1", Content: "Test H1"},
+		{Index: 2, Type: "p", Content: "Test paragraph"},
+	}
+
+	selected := make([]bool, len(elements))
+	selected[0] = true // Sélectionner le premier élément
+
+	pageInfo := PageInfo{
+		URL:   "https://test.com",
+		Title: "Test Page",
+	}
+
+	state := SelectionState{
+		Elements: elements,
+		Selected: selected,
+		PageInfo: pageInfo,
+	}
+
+	// Test printSelectableElements (capture stdout)
+	// On ne teste que l'exécution sans erreur, car la sortie est complexe à valider
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("printSelectableElements panicked: %v", r)
+		}
+	}()
+
+	// Ces fonctions écrivent sur stdout, on teste juste qu'elles ne plantent pas
+	printSelectableElements(state)
+	printSelectionStatus(state)
+	printSelectionMenu()
+	printHelp()
+}
+
 func TestBuildSelectableElements(t *testing.T) {
 	info := PageInfo{
 		URL:        "https://test.com",

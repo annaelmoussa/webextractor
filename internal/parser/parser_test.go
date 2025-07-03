@@ -46,3 +46,53 @@ func TestTextContent(t *testing.T) {
 		t.Fatalf("got %s", txt)
 	}
 }
+
+func TestFindLinks(t *testing.T) {
+	htmlWithLinks := `
+	<html>
+		<body>
+			<a href="https://example.com">Example Link</a>
+			<a href="/internal-link">Internal Link</a>
+			<a href="mailto:test@example.com">Email Link</a>
+			<a>Link without href</a>
+			<div>
+				<a href="#section">Section Link</a>
+			</div>
+		</body>
+	</html>
+	`
+
+	doc, err := html.Parse(strings.NewReader(htmlWithLinks))
+	if err != nil {
+		t.Fatalf("Failed to parse HTML: %v", err)
+	}
+
+	links := FindLinks(doc)
+
+	// Should find 4 links (excluding the one without href)
+	expectedCount := 4
+	if len(links) != expectedCount {
+		t.Fatalf("Expected %d links, got %d", expectedCount, len(links))
+	}
+
+	// Test specific links
+	expectedLinks := map[string]string{
+		"https://example.com":     "Example Link",
+		"/internal-link":          "Internal Link",
+		"mailto:test@example.com": "Email Link",
+		"#section":                "Section Link",
+	}
+
+	found := make(map[string]string)
+	for _, link := range links {
+		found[link.Href] = link.Text
+	}
+
+	for expectedHref, expectedText := range expectedLinks {
+		if text, exists := found[expectedHref]; !exists {
+			t.Errorf("Expected link %s not found", expectedHref)
+		} else if text != expectedText {
+			t.Errorf("Expected text '%s' for link %s, got '%s'", expectedText, expectedHref, text)
+		}
+	}
+}

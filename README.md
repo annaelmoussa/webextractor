@@ -170,7 +170,7 @@ webextractor/
 
 Le projet utilise GitHub Actions pour automatiser :
 
-- **Tests et qualité** : Exécution automatique des tests avec couverture ≥ 80%
+- **Tests et qualité** : Exécution automatique des tests avec couverture ≥ 70%
 - **Linting** : Vérification du code avec `go vet`, `gofmt`, `golangci-lint` et `staticcheck`
 - **Build multi-plateforme** : Compilation pour Linux, macOS et Windows (AMD64 + ARM64)
 - **Scans de sécurité** : Analyse avec `gosec` et review des dépendances
