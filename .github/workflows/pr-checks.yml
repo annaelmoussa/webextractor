@@ -5,6 +5,12 @@ on:
     branches: [main, develop]
     types: [opened, synchronize, reopened]
 
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  pull-requests: read
+
 env:
   GO_VERSION: "1.23"
 
