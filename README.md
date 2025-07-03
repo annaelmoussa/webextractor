@@ -9,15 +9,19 @@ Un extracteur HTML minimaliste écrit en Go avec une architecture modulaire et d
   - `tag` — nom d'élément (`p`, `div`, `span`, etc.)
   - `.class` — nom de classe (`.note`, `.content`)
   - `#id` — attribut `id` exact (`#main`, `#header`)
-- **Mode interactif** : Interface TUI intuitive quand `-sel` est omis
-  - Navigation par pages (15 éléments max par page)
-  - Sélection par indices numériques (`0`, `1,3,5`, `0-3`)
-  - Catégorisation automatique des éléments (Titres, Textes, Liens, etc.)
-  - Navigation entre pages web
-- **Sortie JSON** : Format standardisé avec indentation 2 espaces
+- **Mode interactif avancé** : Interface TUI intuitive avec affichage structuré
+  - **Affichage avec emojis** : Interface claire et colorée (📄 Page, 🌐 Titre, 🔠 H1, 📝 Paragraphes, 🔗 Liens, etc.)
+  - **Sélection granulaire** : Choix d'éléments individuels par indices numériques
+  - **Sélections multiples** : Support des indices (`0,2,4`) et plages (`1-3`, `0,2-5,8`)
+  - **Sélections personnalisées** : Combinaison libre d'éléments de différentes catégories
+  - **Navigation web** : Possibilité de suivre les liens détectés pour explorer d'autres pages
+  - **Aperçu en temps réel** : Prévisualisation des sélections avant extraction finale
+- **Sortie JSON flexible** : Format standardisé ou structuré selon le mode utilisé
 - **Qualité** : >80% de couverture de tests, zéro warning `go vet`, code `go fmt` compliant
 
-## 📋 Format de sortie
+## 📋 Formats de sortie
+
+### Mode sélecteurs classiques
 
 ```json
 {
@@ -32,6 +36,21 @@ Un extracteur HTML minimaliste écrit en Go avec une architecture modulaire et d
       "matches": ["Note importante", "Autre note"]
     }
   ]
+}
+```
+
+### Mode interactif structuré
+
+```json
+{
+  "url": "https://example.com",
+  "title": "Example Domain",
+  "h1": ["Example Domain"],
+  "paragraphs": [
+    "This domain is for use in illustrative examples...",
+    "More information..."
+  ],
+  "links": ["https://www.iana.org/domains/example"]
 }
 ```
 
@@ -63,13 +82,36 @@ go build
 ```bash
 # Lancer le mode interactif
 ./webextractor -url https://example.com
-
-# L'interface vous guidera pour :
-# - Voir les éléments par catégories
-# - Sélectionner par numéros (0, 1,3,5, 0-3)
-# - Naviguer vers d'autres pages (L0, L1, etc.)
-# - Prévisualiser l'extraction avant de terminer
 ```
+
+**Interface d'exemple** :
+
+```
+📄 Page: https://example.com
+🌐 Title: Example Domain
+
+Éléments disponibles:
+✅ [ 0] 🌐 TITLE Example Domain
+✅ [ 1] 🔠 H1 Example Domain
+✅ [ 2] 📝 P This domain is for use in illustrative...
+✅ [ 3] 📝 P More information...
+✅ [ 4] 🔗 LINK More information... (https://...)
+
+Commandes disponibles:
+• Sélection: tapez les numéros (ex: 0,2,4 ou 1-3 ou all)
+• Navigation: L<numéro> pour suivre un lien
+• Aperçu: preview pour voir la sélection actuelle
+• Sortie: done pour générer le JSON final
+```
+
+**Exemples de sélections** :
+
+- `all` — Sélectionner tous les éléments
+- `0` — Sélectionner uniquement l'élément 0 (titre)
+- `1,3,4` — Sélectionner les éléments 1, 3 et 4
+- `0-2` — Sélectionner les éléments 0, 1 et 2
+- `0,2-4,7` — Combinaison : éléments 0, 2 à 4, et 7
+- `L4` — Naviguer vers le lien de l'élément 4
 
 ### Paramètres disponibles
 
@@ -100,6 +142,21 @@ webextractor/
 - **API simple** : Pas de réflexion complexe ou de code généré
 - **Testabilité** : Chaque composant est testé unitairement
 
+## 🎯 Fonctionnalités avancées
+
+### Interface TUI granulaire
+
+- **Sélection fine** : Choisissez exactement les éléments que vous voulez
+- **Aperçu instantané** : Voyez votre sélection avant l'extraction
+- **Navigation intuitive** : Explorez les liens directement depuis l'interface
+- **Affichage structuré** : Emojis et catégorisation pour une meilleure lisibilité
+
+### Flexibilité d'extraction
+
+- **Mode sélecteurs** : Pour les utilisations scriptées/automatisées
+- **Mode interactif** : Pour l'exploration et la sélection précise
+- **Sortie adaptative** : JSON classique ou structuré selon le contexte
+
 ## 🧪 Développement
 
 ### Tests et qualité
@@ -129,6 +186,12 @@ go vet ./... && go fmt ./... && go test ./... -cover
 
 # Test avec fichier de sortie
 ./webextractor -url https://httpbin.org/html -sel "p" -out /tmp/test.json
+
+# Test sélections granulaires
+echo "0,2-4" | ./webextractor -url https://example.com
+
+# Test navigation
+echo "L0" | ./webextractor -url https://example.com
 ```
 
 ## 📦 Dépendances
