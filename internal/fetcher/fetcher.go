@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"golang.org/x/net/html"
+	"webextractor/internal/htmlparser"
 )
 
 // Fetcher encapsulates HTTP client logic.
@@ -24,7 +24,7 @@ func New(timeout time.Duration) *Fetcher {
 }
 
 // Fetch retrieves the page located at url and parses the body as HTML.
-func (f *Fetcher) Fetch(url string) (*html.Node, error) {
+func (f *Fetcher) Fetch(url string) (*htmlparser.Node, error) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func (f *Fetcher) Fetch(url string) (*html.Node, error) {
 		return nil, fmt.Errorf("unexpected HTTP status: %s", resp.Status)
 	}
 
-	doc, err := html.Parse(resp.Body)
+	doc, err := htmlparser.Parse(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("html parse error: %w", err)
 	}

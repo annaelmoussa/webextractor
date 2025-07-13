@@ -6,7 +6,7 @@ import (
 	"testing"
 	"webextractor/internal/parser"
 
-	"golang.org/x/net/html"
+	"webextractor/internal/htmlparser"
 )
 
 func TestExtractPageInfo(t *testing.T) {
@@ -29,7 +29,7 @@ func TestExtractPageInfo(t *testing.T) {
 		</html>
 	`
 
-	doc, err := html.Parse(strings.NewReader(htmlStr))
+	doc, err := htmlparser.Parse(strings.NewReader(htmlStr))
 	if err != nil {
 		t.Fatalf("Failed to parse HTML: %v", err)
 	}
@@ -332,8 +332,8 @@ func TestHandleFinishWithSelections(t *testing.T) {
 		t.Fatalf("Unexpected error for empty selection: %v", err)
 	}
 
-	if result.Finished {
-		t.Error("Expected result to NOT be finished when no elements selected")
+	if !result.Finished {
+		t.Error("Expected result to be finished when no elements selected (user wants to exit)")
 	}
 }
 

@@ -3,23 +3,23 @@ package parser
 import (
 	"strings"
 
-	"golang.org/x/net/html"
+	"webextractor/internal/htmlparser"
 )
 
 // MatchFunc decides if a given node matches our selector.
-type MatchFunc func(n *html.Node) bool
+type MatchFunc func(n *htmlparser.Node) bool
 
 // Compile builds a MatchFunc from a simple selector string.
 func Compile(selector string) MatchFunc {
 	selector = strings.TrimSpace(selector)
 	if selector == "" {
-		return func(_ *html.Node) bool { return false }
+		return func(_ *htmlparser.Node) bool { return false }
 	}
 	switch selector[0] {
 	case '.':
 		class := selector[1:]
-		return func(n *html.Node) bool {
-			if n.Type != html.ElementNode {
+		return func(n *htmlparser.Node) bool {
+			if n.Type != htmlparser.ElementNode {
 				return false
 			}
 			for _, a := range n.Attr {
@@ -37,8 +37,8 @@ func Compile(selector string) MatchFunc {
 		}
 	case '#':
 		id := selector[1:]
-		return func(n *html.Node) bool {
-			if n.Type != html.ElementNode {
+		return func(n *htmlparser.Node) bool {
+			if n.Type != htmlparser.ElementNode {
 				return false
 			}
 			for _, a := range n.Attr {
@@ -50,18 +50,18 @@ func Compile(selector string) MatchFunc {
 		}
 	default:
 		tag := strings.ToLower(selector)
-		return func(n *html.Node) bool {
-			return n.Type == html.ElementNode && n.Data == tag
+		return func(n *htmlparser.Node) bool {
+			return n.Type == htmlparser.ElementNode && n.Data == tag
 		}
 	}
 }
 
 // FindAll traverses the DOM tree depth-first and returns nodes that match the selector.
-func FindAll(root *html.Node, selector string) []*html.Node {
+func FindAll(root *htmlparser.Node, selector string) []*htmlparser.Node {
 	matcher := Compile(selector)
-	var out []*html.Node
-	var rec func(*html.Node)
-	rec = func(n *html.Node) {
+	var out []*htmlparser.Node
+	var rec func(*htmlparser.Node)
+	rec = func(n *htmlparser.Node) {
 		if matcher(n) {
 			out = append(out, n)
 		}
@@ -74,11 +74,11 @@ func FindAll(root *html.Node, selector string) []*html.Node {
 }
 
 // TextContent returns the concatenation of all text descendants of n.
-func TextContent(n *html.Node) string {
+func TextContent(n *htmlparser.Node) string {
 	var b strings.Builder
-	var rec func(*html.Node)
-	rec = func(nd *html.Node) {
-		if nd.Type == html.TextNode {
+	var rec func(*htmlparser.Node)
+	rec = func(nd *htmlparser.Node) {
+		if nd.Type == htmlparser.TextNode {
 			b.WriteString(strings.TrimSpace(nd.Data))
 			b.WriteString(" ")
 		}
@@ -97,9 +97,9 @@ type Link struct {
 }
 
 // FindLinks traverses the HTML tree and extracts all hyperlinks.
-func FindLinks(n *html.Node) []Link {
+func FindLinks(n *htmlparser.Node) []Link {
 	var links []Link
-	if n.Type == html.ElementNode && n.Data == "a" {
+	if n.Type == htmlparser.ElementNode && n.Data == "a" {
 		var href string
 		for _, a := range n.Attr {
 			if a.Key == "href" {

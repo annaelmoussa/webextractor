@@ -4,13 +4,13 @@ import (
 	"strings"
 	"testing"
 
-	"golang.org/x/net/html"
+	"webextractor/internal/htmlparser"
 )
 
 const sampleHTML = `<html><body><div id="main" class="content highlight"><p>First</p><p class="note">Second</p></div><span class="note">Third</span></body></html>`
 
-func getDoc() *html.Node {
-	doc, _ := html.Parse(strings.NewReader(sampleHTML))
+func getDoc() *htmlparser.Node {
+	doc, _ := htmlparser.Parse(strings.NewReader(sampleHTML))
 	return doc
 }
 
@@ -62,7 +62,7 @@ func TestFindLinks(t *testing.T) {
 	</html>
 	`
 
-	doc, err := html.Parse(strings.NewReader(htmlWithLinks))
+	doc, err := htmlparser.Parse(strings.NewReader(htmlWithLinks))
 	if err != nil {
 		t.Fatalf("Failed to parse HTML: %v", err)
 	}

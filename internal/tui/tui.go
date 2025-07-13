@@ -10,7 +10,7 @@ import (
 
 	"webextractor/internal/parser"
 
-	"golang.org/x/net/html"
+	"webextractor/internal/htmlparser"
 )
 
 // TuiResult holds the outcome of an interactive prompt session.
@@ -58,7 +58,7 @@ type SelectionState struct {
 
 // PromptSelectors enters an interactive session where the user can pick elements
 // individually and combine selections across different categories.
-func PromptSelectors(root *html.Node, currentURL *url.URL) (TuiResult, error) {
+func PromptSelectors(root *htmlparser.Node, currentURL *url.URL) (TuiResult, error) {
 	pageInfo := extractPageInfo(root, currentURL)
 	elements := buildSelectableElements(pageInfo)
 	state := SelectionState{
@@ -119,7 +119,7 @@ func PromptSelectors(root *html.Node, currentURL *url.URL) (TuiResult, error) {
 	}
 }
 
-func extractPageInfo(root *html.Node, currentURL *url.URL) PageInfo {
+func extractPageInfo(root *htmlparser.Node, currentURL *url.URL) PageInfo {
 	info := PageInfo{
 		URL: currentURL.String(),
 	}
@@ -156,7 +156,7 @@ func extractPageInfo(root *html.Node, currentURL *url.URL) PageInfo {
 	pNodes := parser.FindAll(root, "p")
 	for _, node := range pNodes {
 		text := strings.TrimSpace(parser.TextContent(node))
-		if text != "" && len(text) > 10 {
+		if text != "" && len(text) > 3 {
 			info.Paragraphs = append(info.Paragraphs, text)
 		}
 	}
@@ -580,8 +580,8 @@ func handleFinishWithSelections(state SelectionState) (TuiResult, error) {
 	}
 
 	if selectedCount == 0 {
-		fmt.Printf("⚠️ Aucun élément sélectionné.\n")
-		return TuiResult{Finished: false}, nil
+		fmt.Printf("⚠️ Aucun élément sélectionné. Session terminée.\n")
+		return TuiResult{Finished: true}, nil
 	}
 
 	fmt.Printf("✅ Session terminée avec %d élément(s) sélectionné(s)!\n", selectedCount)
