@@ -1,12 +1,12 @@
 package tui
 
 import (
-	"net/url"
 	"strings"
 	"testing"
 	"webextractor/internal/parser"
 
 	"webextractor/internal/htmlparser"
+	"webextractor/internal/neturl"
 )
 
 func TestExtractPageInfo(t *testing.T) {
@@ -34,11 +34,11 @@ func TestExtractPageInfo(t *testing.T) {
 		t.Fatalf("Failed to parse HTML: %v", err)
 	}
 
-	testURL, _ := url.Parse("https://test.com")
+	testURL, _ := neturl.Parse("https://test.com")
 	info := extractPageInfo(doc, testURL)
 
-	if info.URL != "https://test.com" {
-		t.Errorf("Expected URL 'https://test.com', got '%s'", info.URL)
+	if info.URL != "https://test.com/" {
+		t.Errorf("Expected URL 'https://test.com/', got '%s'", info.URL)
 	}
 
 	if info.Title != "Test Page" {

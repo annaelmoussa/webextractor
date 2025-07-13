@@ -4,12 +4,12 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
 	"strings"
 	"testing"
 
 	ioLib "webextractor/internal/io"
+	"webextractor/internal/neturl"
 )
 
 func TestCLI(t *testing.T) {
@@ -48,13 +48,13 @@ func TestURLParsing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Valid URL should not error: %v", err)
 	}
-	if validURL.String() != "https://example.com" {
-		t.Errorf("URL parsing failed")
+	if validURL.String() != "https://example.com/" {
+		t.Errorf("URL parsing failed, got: %s", validURL.String())
 	}
 }
 
-func parseURL(urlStr string) (*url.URL, error) {
-	return url.Parse(urlStr)
+func parseURL(urlStr string) (*neturl.URL, error) {
+	return neturl.Parse(urlStr)
 }
 
 func TestSelectorParsing(t *testing.T) {

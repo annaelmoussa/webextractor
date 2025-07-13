@@ -1,43 +1,35 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
-	"net/url"
 	"os"
 	"strings"
-	"time"
 
+	"webextractor/internal/cli"
 	"webextractor/internal/fetcher"
 	"webextractor/internal/io"
+	"webextractor/internal/neturl"
 	"webextractor/internal/parser"
 	"webextractor/internal/tui"
 )
 
 func main() {
-	urlPtr := flag.String("url", "", "URL of the web page to extract from (required)")
-	selPtr := flag.String("sel", "", "CSS-like selector (tag, .class, #id). If omitted, interactive mode starts")
-	outPtr := flag.String("out", "-", "Output JSON file path ('-' for stdout)")
-	timeoutPtr := flag.Duration("timeout", 10*time.Second, "HTTP client timeout")
-
-	flag.Parse()
-
-	if *urlPtr == "" {
-		fmt.Fprintln(os.Stderr, "❌ L'option -url est requise")
-		flag.Usage()
+	flags, err := cli.Parse()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "❌ %s\n", err)
 		os.Exit(1)
 	}
 
-	f := fetcher.New(*timeoutPtr)
+	f := fetcher.New(flags.Timeout)
 
 	var selectors []string
 	var structuredData map[string]interface{}
 	var useStructuredOutput bool
 
-	if strings.TrimSpace(*selPtr) == "" {
+	if strings.TrimSpace(flags.Sel) == "" {
 		var err error
-		selectors, structuredData, useStructuredOutput, err = interactiveSession(*urlPtr, f)
+		selectors, structuredData, useStructuredOutput, err = interactiveSession(flags.URL, f)
 		if err != nil {
 			log.Fatalf("❌ Erreur lors de la session interactive : %v", err)
 		}
@@ -48,13 +40,13 @@ func main() {
 			os.Exit(0)
 		}
 	} else {
-		selectors = strings.Split(*selPtr, ",")
+		selectors = strings.Split(flags.Sel, ",")
 		useStructuredOutput = false
 	}
 
 	if useStructuredOutput && structuredData != nil {
 		structuredResult := io.StructuredResult{
-			URL: *urlPtr,
+			URL: flags.URL,
 		}
 
 		if title, ok := structuredData["title"].(string); ok {
@@ -84,18 +76,18 @@ func main() {
 
 		fmt.Printf("✅ Extraction terminée avec format structuré\n")
 
-		if *outPtr == "-" {
+		if flags.Out == "-" {
 			fmt.Printf("📤 Résultats affichés ci-dessous :\n\n")
 		} else {
-			fmt.Printf("📁 Résultats sauvegardés dans : %s\n", *outPtr)
+			fmt.Printf("📁 Résultats sauvegardés dans : %s\n", flags.Out)
 		}
 
-		if err := io.WriteStructured(*outPtr, structuredResult); err != nil {
+		if err := io.WriteStructured(flags.Out, structuredResult); err != nil {
 			log.Fatalf("❌ Erreur lors de l'écriture : %v", err)
 		}
 	} else {
-		fmt.Printf("\n🔄 Extraction finale des données de %s...\n", *urlPtr)
-		doc, err := f.Fetch(*urlPtr)
+		fmt.Printf("\n🔄 Extraction finale des données de %s...\n", flags.URL)
+		doc, err := f.Fetch(flags.URL)
 		if err != nil {
 			log.Fatalf("❌ Erreur lors de la récupération finale : %v", err)
 		}
@@ -118,13 +110,13 @@ func main() {
 
 		fmt.Printf("✅ Extraction terminée : %d sélecteurs utilisés, %d éléments extraits\n", len(selectors), totalMatches)
 
-		if *outPtr == "-" {
+		if flags.Out == "-" {
 			fmt.Printf("📤 Résultats affichés ci-dessous :\n\n")
 		} else {
-			fmt.Printf("📁 Résultats sauvegardés dans : %s\n", *outPtr)
+			fmt.Printf("📁 Résultats sauvegardés dans : %s\n", flags.Out)
 		}
 
-		if err := io.Write(*outPtr, io.DocumentResult{URL: *urlPtr, Results: results}); err != nil {
+		if err := io.Write(flags.Out, io.DocumentResult{URL: flags.URL, Results: results}); err != nil {
 			log.Fatalf("❌ Erreur lors de l'écriture : %v", err)
 		}
 	}
@@ -137,7 +129,7 @@ func interactiveSession(startURL string, f *fetcher.Fetcher) ([]string, map[stri
 	currentURLStr := startURL
 
 	for {
-		parsedURL, err := url.Parse(currentURLStr)
+		parsedURL, err := neturl.Parse(currentURLStr)
 		if err != nil {
 			return nil, nil, false, fmt.Errorf("invalid URL '%s': %w", currentURLStr, err)
 		}

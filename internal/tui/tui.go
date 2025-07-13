@@ -3,14 +3,13 @@ package tui
 import (
 	"bufio"
 	"fmt"
-	"net/url"
 	"os"
-	"strconv"
 	"strings"
 
-	"webextractor/internal/parser"
-
 	"webextractor/internal/htmlparser"
+	"webextractor/internal/neturl"
+	"webextractor/internal/parser"
+	"webextractor/internal/strconv"
 )
 
 // TuiResult holds the outcome of an interactive prompt session.
@@ -58,7 +57,7 @@ type SelectionState struct {
 
 // PromptSelectors enters an interactive session where the user can pick elements
 // individually and combine selections across different categories.
-func PromptSelectors(root *htmlparser.Node, currentURL *url.URL) (TuiResult, error) {
+func PromptSelectors(root *htmlparser.Node, currentURL *neturl.URL) (TuiResult, error) {
 	pageInfo := extractPageInfo(root, currentURL)
 	elements := buildSelectableElements(pageInfo)
 	state := SelectionState{
@@ -119,7 +118,7 @@ func PromptSelectors(root *htmlparser.Node, currentURL *url.URL) (TuiResult, err
 	}
 }
 
-func extractPageInfo(root *htmlparser.Node, currentURL *url.URL) PageInfo {
+func extractPageInfo(root *htmlparser.Node, currentURL *neturl.URL) PageInfo {
 	info := PageInfo{
 		URL: currentURL.String(),
 	}
@@ -164,7 +163,7 @@ func extractPageInfo(root *htmlparser.Node, currentURL *url.URL) PageInfo {
 	links := parser.FindLinks(root)
 	for _, link := range links {
 		if link.Href != "" {
-			parsedHref, err := url.Parse(link.Href)
+			parsedHref, err := neturl.Parse(link.Href)
 			if err == nil {
 				link.Href = currentURL.ResolveReference(parsedHref).String()
 			}
