@@ -54,9 +54,8 @@ func validateOutputPath(path string) error {
 	return nil
 }
 
-// Write écrit le résultat dans le chemin de fichier donné ("-" signifie stdout).
-// path est le chemin de sortie, doc est le résultat à écrire.
-func Write(path string, doc DocumentResult) error {
+// writeJSON écrit un objet JSON dans le chemin de fichier donné ("-" signifie stdout).
+func writeJSON(path string, data any) error {
 	if err := validateOutputPath(path); err != nil {
 		return fmt.Errorf("output path validation failed: %w", err)
 	}
@@ -71,31 +70,20 @@ func Write(path string, doc DocumentResult) error {
 		enc = json.NewEncoder(file)
 	}
 	enc.SetIndent("", "  ")
-	if err := enc.Encode(doc); err != nil {
+	if err := enc.Encode(data); err != nil {
 		return fmt.Errorf("json encode: %w", err)
 	}
 	return nil
 }
 
+// Write écrit le résultat dans le chemin de fichier donné ("-" signifie stdout).
+// path est le chemin de sortie, doc est le résultat à écrire.
+func Write(path string, doc DocumentResult) error {
+	return writeJSON(path, doc)
+}
+
 // WriteStructured écrit le résultat structuré dans le chemin de fichier donné ("-" signifie stdout).
 // path est le chemin de sortie, doc est le résultat à écrire.
 func WriteStructured(path string, doc StructuredResult) error {
-	if err := validateOutputPath(path); err != nil {
-		return fmt.Errorf("output path validation failed: %w", err)
-	}
-
-	enc := json.NewEncoder(os.Stdout)
-	if path != "-" && path != "" {
-		file, err := os.Create(path) // #nosec G304 - path validated above - on valide le chemin ci-dessus
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-		enc = json.NewEncoder(file)
-	}
-	enc.SetIndent("", "  ")
-	if err := enc.Encode(doc); err != nil {
-		return fmt.Errorf("json encode: %w", err)
-	}
-	return nil
+	return writeJSON(path, doc)
 }

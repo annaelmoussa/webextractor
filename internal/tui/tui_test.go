@@ -137,7 +137,7 @@ func TestBuildSelectableElements(t *testing.T) {
 
 	types := make(map[string]int)
 	for _, elem := range elements {
-		types[elem.Type]++
+		types[string(elem.Type)]++
 	}
 
 	expectedTypes := map[string]int{

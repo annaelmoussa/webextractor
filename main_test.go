@@ -89,7 +89,7 @@ func TestEmptySelectorHandling(t *testing.T) {
 }
 
 func TestStructuredDataProcessing(t *testing.T) {
-	structuredData := map[string]interface{}{
+	structuredData := map[string]any{
 		"title":      "Test Title",
 		"h1":         []string{"H1 Title"},
 		"h2":         []string{"H2 Title 1", "H2 Title 2"},

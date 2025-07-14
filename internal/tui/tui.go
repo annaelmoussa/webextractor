@@ -10,12 +10,13 @@ import (
 	"webextractor/internal/neturl"
 	"webextractor/internal/parser"
 	"webextractor/internal/strconv"
+	"webextractor/internal/types"
 )
 
 // TuiResult holds the outcome of an interactive prompt session.
 type TuiResult struct {
 	Selectors    []string
-	SelectedData map[string]interface{}
+	SelectedData map[string]any
 	NextURL      string
 	Finished     bool
 }
@@ -42,10 +43,10 @@ type ImageInfo struct {
 // SelectableElement représente un élément individuel sélectionnable
 type SelectableElement struct {
 	Index       int
-	Type        string
+	Type        types.ElementType
 	Content     string
 	FullContent string
-	Data        interface{}
+	Data        any
 }
 
 // SelectionState garde l'état des sélections en cours
@@ -214,7 +215,7 @@ func buildSelectableElements(info PageInfo) []SelectableElement {
 	if info.Title != "" {
 		elements = append(elements, SelectableElement{
 			Index:       index,
-			Type:        "title",
+			Type:        types.ElementTypeTitle,
 			Content:     truncateText(info.Title, 80),
 			FullContent: info.Title,
 			Data:        info.Title,
@@ -225,7 +226,7 @@ func buildSelectableElements(info PageInfo) []SelectableElement {
 	for _, h1 := range info.H1 {
 		elements = append(elements, SelectableElement{
 			Index:       index,
-			Type:        "h1",
+			Type:        types.ElementTypeH1,
 			Content:     truncateText(h1, 80),
 			FullContent: h1,
 			Data:        h1,
@@ -236,7 +237,7 @@ func buildSelectableElements(info PageInfo) []SelectableElement {
 	for _, h2 := range info.H2 {
 		elements = append(elements, SelectableElement{
 			Index:       index,
-			Type:        "h2",
+			Type:        types.ElementTypeH2,
 			Content:     truncateText(h2, 80),
 			FullContent: h2,
 			Data:        h2,
@@ -247,7 +248,7 @@ func buildSelectableElements(info PageInfo) []SelectableElement {
 	for _, h3 := range info.H3 {
 		elements = append(elements, SelectableElement{
 			Index:       index,
-			Type:        "h3",
+			Type:        types.ElementTypeH3,
 			Content:     truncateText(h3, 80),
 			FullContent: h3,
 			Data:        h3,
@@ -258,7 +259,7 @@ func buildSelectableElements(info PageInfo) []SelectableElement {
 	for _, p := range info.Paragraphs {
 		elements = append(elements, SelectableElement{
 			Index:       index,
-			Type:        "p",
+			Type:        types.ElementTypeParagraph,
 			Content:     truncateText(p, 80),
 			FullContent: p,
 			Data:        p,
@@ -270,7 +271,7 @@ func buildSelectableElements(info PageInfo) []SelectableElement {
 		linkText := fmt.Sprintf("%s (%s)", link.Text, link.Href)
 		elements = append(elements, SelectableElement{
 			Index:       index,
-			Type:        "link",
+			Type:        types.ElementTypeLink,
 			Content:     truncateText(linkText, 80),
 			FullContent: linkText,
 			Data:        link,
@@ -286,7 +287,7 @@ func buildSelectableElements(info PageInfo) []SelectableElement {
 		imgText := fmt.Sprintf("%s (%s)", alt, img.Src)
 		elements = append(elements, SelectableElement{
 			Index:       index,
-			Type:        "image",
+			Type:        types.ElementTypeImage,
 			Content:     truncateText(imgText, 80),
 			FullContent: imgText,
 			Data:        img,
@@ -297,7 +298,7 @@ func buildSelectableElements(info PageInfo) []SelectableElement {
 	for _, list := range info.Lists {
 		elements = append(elements, SelectableElement{
 			Index:       index,
-			Type:        "list",
+			Type:        types.ElementTypeList,
 			Content:     truncateText(list, 80),
 			FullContent: list,
 			Data:        list,
@@ -315,6 +316,10 @@ func truncateText(text string, maxLen int) string {
 	return text[:maxLen-3] + "..."
 }
 
+func getElementIcon(elementType types.ElementType) string {
+	return elementType.Icon()
+}
+
 func printSelectableElements(state SelectionState) {
 	fmt.Printf("\n" + strings.Repeat("=", 70) + "\n")
 	fmt.Printf("📄 Page: %s\n", state.PageInfo.URL)
@@ -327,29 +332,9 @@ func printSelectableElements(state SelectionState) {
 			selectedMark = "✅"
 		}
 
-		var icon string
-		switch elem.Type {
-		case "title":
-			icon = "🌐"
-		case "h1":
-			icon = "🔠"
-		case "h2":
-			icon = "📰"
-		case "h3":
-			icon = "📋"
-		case "p":
-			icon = "📝"
-		case "link":
-			icon = "🔗"
-		case "image":
-			icon = "🖼️"
-		case "list":
-			icon = "📄"
-		default:
-			icon = "📌"
-		}
+		icon := getElementIcon(elem.Type)
 
-		fmt.Printf("%s [%2d] %s %s %s\n", selectedMark, i, icon, strings.ToUpper(elem.Type), elem.Content)
+		fmt.Printf("%s [%2d] %s %s %s\n", selectedMark, i, icon, strings.ToUpper(string(elem.Type)), elem.Content)
 	}
 	fmt.Printf(strings.Repeat("=", 70) + "\n")
 }
@@ -365,7 +350,7 @@ func printSelectionStatus(state SelectionState) {
 	if selectedCount > 0 {
 		fmt.Printf("\n📊 SÉLECTIONS ACTUELLES : %d élément(s) sélectionné(s)\n", selectedCount)
 
-		typeCount := make(map[string]int)
+		typeCount := make(map[types.ElementType]int)
 		for i, elem := range state.Elements {
 			if state.Selected[i] {
 				typeCount[elem.Type]++
@@ -374,26 +359,8 @@ func printSelectionStatus(state SelectionState) {
 
 		var parts []string
 		for elemType, count := range typeCount {
-			var icon string
-			switch elemType {
-			case "title":
-				icon = "🌐"
-			case "h1":
-				icon = "🔠"
-			case "h2":
-				icon = "📰"
-			case "h3":
-				icon = "📋"
-			case "p":
-				icon = "📝"
-			case "link":
-				icon = "🔗"
-			case "image":
-				icon = "🖼️"
-			case "list":
-				icon = "📄"
-			}
-			parts = append(parts, fmt.Sprintf("%s %s(%d)", icon, elemType, count))
+			icon := getElementIcon(elemType)
+			parts = append(parts, fmt.Sprintf("%s %s(%d)", icon, string(elemType), count))
 		}
 		fmt.Printf("  → %s\n", strings.Join(parts, ", "))
 	} else {
@@ -524,39 +491,39 @@ func parseIndices(input string, maxIndex int) ([]int, error) {
 }
 
 func handleFinishWithSelections(state SelectionState) (TuiResult, error) {
-	selectedData := make(map[string]interface{})
+	selectedData := make(map[string]any)
 	var selectors []string
 
-	selectedByType := make(map[string][]interface{})
+	selectedByType := make(map[string][]any)
 
 	for i, elem := range state.Elements {
 		if state.Selected[i] {
 			switch elem.Type {
-			case "title":
+			case types.ElementTypeTitle:
 				selectedData["title"] = elem.Data.(string)
 				selectors = append(selectors, "title")
 
-			case "h1":
+			case types.ElementTypeH1:
 				selectedByType["h1"] = append(selectedByType["h1"], elem.Data)
 
-			case "h2":
+			case types.ElementTypeH2:
 				selectedByType["h2"] = append(selectedByType["h2"], elem.Data)
 
-			case "h3":
+			case types.ElementTypeH3:
 				selectedByType["h3"] = append(selectedByType["h3"], elem.Data)
 
-			case "p":
+			case types.ElementTypeParagraph:
 				selectedByType["paragraphs"] = append(selectedByType["paragraphs"], elem.Data)
 
-			case "link":
+			case types.ElementTypeLink:
 				link := elem.Data.(parser.Link)
 				selectedByType["links"] = append(selectedByType["links"], link.Href)
 
-			case "image":
+			case types.ElementTypeImage:
 				img := elem.Data.(ImageInfo)
 				selectedByType["images"] = append(selectedByType["images"], img.Src)
 
-			case "list":
+			case types.ElementTypeList:
 				selectedByType["lists"] = append(selectedByType["lists"], elem.Data)
 			}
 		}

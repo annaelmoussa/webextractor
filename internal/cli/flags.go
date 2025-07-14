@@ -5,21 +5,24 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"webextractor/internal/types"
 )
 
 // Flags contient toutes les valeurs des paramètres de ligne de commande
 type Flags struct {
-	URL     string
-	Sel     string
-	Out     string
-	Timeout time.Duration
+	URL     types.URLString // URL validée
+	Sel     string          // Sélecteur CSS brut (sera converti en SelectorList)
+	Out     types.FilePath  // Chemin de sortie sécurisé
+	Timeout time.Duration   // Timeout pour les requêtes HTTP
 }
 
 // Parse analyse les arguments de ligne de commande et retourne les valeurs des paramètres
 func Parse() (*Flags, error) {
+	defaultOut, _ := types.NewFilePath("-")
 	flags := &Flags{
-		Out:     "-",                // par défaut
-		Timeout: 10 * time.Second,   // par défaut
+		Out:     defaultOut,
+		Timeout: 10 * time.Second,
 	}
 	
 	args := os.Args[1:] // On ignore le nom du programme
@@ -36,7 +39,11 @@ func Parse() (*Flags, error) {
 			if i+1 >= len(args) {
 				return nil, fmt.Errorf("-url requires a value")
 			}
-			flags.URL = args[i+1]
+			url, err := types.NewURLString(args[i+1])
+			if err != nil {
+				return nil, fmt.Errorf("invalid URL: %w", err)
+			}
+			flags.URL = url
 			i++ // ignore l'argument suivant (la valeur)
 			
 		case "-sel":
@@ -50,7 +57,11 @@ func Parse() (*Flags, error) {
 			if i+1 >= len(args) {
 				return nil, fmt.Errorf("-out requires a value")
 			}
-			flags.Out = args[i+1]
+			outPath, err := types.NewFilePath(args[i+1])
+			if err != nil {
+				return nil, fmt.Errorf("invalid output path: %w", err)
+			}
+			flags.Out = outPath
 			i++ // ignore l'argument suivant (la valeur)
 			
 		case "-timeout":
@@ -98,8 +109,8 @@ func Parse() (*Flags, error) {
 		}
 	}
 	
-	// On valide les flags requis
-	if flags.URL == "" {
+	// On valide les flags requis si -url n'est pas présent on retourne une erreur
+	if flags.URL.String() == "" {
 		return nil, fmt.Errorf("required flag missing: -url")
 	}
 	
