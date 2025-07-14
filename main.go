@@ -18,7 +18,7 @@ func main() {
 	}
 
 	config := types.NewExtractionConfig(flags.URL.String(), flags.Sel, flags.Out.String(), flags.Timeout)
-	
+
 	application := app.New(config)
 	if err := application.Run(); err != nil {
 		log.Fatalf("❌ %v", err)

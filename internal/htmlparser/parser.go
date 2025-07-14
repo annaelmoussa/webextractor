@@ -10,18 +10,18 @@ func Parse(r io.Reader) (*Node, error) {
 	tokenizer := NewTokenizer(r)
 	doc := &Node{Type: DocumentNode}
 	stack := []*Node{doc}
-	
+
 	for {
 		tokenType := tokenizer.Next()
 		if tokenType == ErrorToken {
 			break
 		}
-		
+
 		// On récupère le token actuel
 		token := tokenizer.Token()
 		// On récupère le nœud courant
 		current := stack[len(stack)-1]
-		
+
 		switch tokenType {
 		case TextToken:
 			if strings.TrimSpace(token.Data) != "" {
@@ -31,7 +31,7 @@ func Parse(r io.Reader) (*Node, error) {
 				}
 				current.AppendChild(textNode)
 			}
-			
+
 		case StartTagToken:
 			element := &Node{
 				Type: ElementNode,
@@ -44,7 +44,7 @@ func Parse(r io.Reader) (*Node, error) {
 				// On ajoute le nœud à la pile
 				stack = append(stack, element)
 			}
-			
+
 		case SelfClosingTagToken:
 			element := &Node{
 				Type: ElementNode,
@@ -52,7 +52,7 @@ func Parse(r io.Reader) (*Node, error) {
 				Attr: token.Attr,
 			}
 			current.AppendChild(element)
-			
+
 		case EndTagToken:
 			if len(stack) > 1 {
 				if stack[len(stack)-1].Data == token.Data {
@@ -66,7 +66,7 @@ func Parse(r io.Reader) (*Node, error) {
 					}
 				}
 			}
-			
+
 		case CommentToken:
 			commentNode := &Node{
 				Type: CommentNode,
@@ -75,7 +75,7 @@ func Parse(r io.Reader) (*Node, error) {
 			current.AppendChild(commentNode)
 		}
 	}
-	
+
 	return doc, nil
 }
 

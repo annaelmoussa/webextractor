@@ -21,16 +21,16 @@ const (
 
 // Token représente un token trouvé pendant l'analyse.
 type Token struct {
-	Type TokenType // On peut ajouter un type à un token exemple (TextToken, StartTagToken, EndTagToken, etc.)
-	Data string // On peut ajouter du texte à un token exemple (Hello World)
+	Type TokenType   // On peut ajouter un type à un token exemple (TextToken, StartTagToken, EndTagToken, etc.)
+	Data string      // On peut ajouter du texte à un token exemple (Hello World)
 	Attr []Attribute // On peut ajouter des attributs à un token exemple (class, id, etc.)
 }
 
 // Tokenizer décompose le HTML en tokens.
 type Tokenizer struct {
 	raw   []byte // le HTML stocké en mémoire (tout le contenu)
-	pos   int // où on en est (curseur actuel dans raw)
-	token Token // le  dernier token trouvé
+	pos   int    // où on en est (curseur actuel dans raw)
+	token Token  // le  dernier token trouvé
 }
 
 // NewTokenizer crée un nouveau tokenizer.
@@ -61,7 +61,6 @@ func (t *Tokenizer) Next() TokenType {
 func (t *Tokenizer) Token() Token {
 	return t.token
 }
-
 
 func (t *Tokenizer) readText() TokenType {
 	// On récupère la position de début du texte
@@ -96,7 +95,7 @@ func (t *Tokenizer) readTag() TokenType {
 	if t.pos >= len(t.raw) || t.raw[t.pos] != '<' {
 		return ErrorToken
 	}
-	
+
 	t.pos++ // On ignore le '<'
 	// Si le caractère courant est un !, alors on lit une balise de commentaire
 	if t.pos < len(t.raw) && t.raw[t.pos] == '!' {
@@ -106,7 +105,7 @@ func (t *Tokenizer) readTag() TokenType {
 	if t.pos < len(t.raw) && t.raw[t.pos] == '/' {
 		return t.readEndTag()
 	}
-	
+
 	return t.readStartTag()
 }
 
@@ -127,9 +126,9 @@ func (t *Tokenizer) readComment() TokenType {
 		t.skipToEnd()
 		return ErrorToken
 	}
-	
+
 	// On ignore le "!--"
-	t.pos += 3 
+	t.pos += 3
 	// On récupère la position de début du commentaire
 	start := t.pos
 	// On parcourt le HTML jusqu'à trouver un -->
@@ -149,7 +148,7 @@ func (t *Tokenizer) readComment() TokenType {
 		// On avance d'un caractère
 		t.pos++
 	}
-	
+
 	// On ignore le reste de la balise de commentaire
 	t.skipToEnd()
 	return ErrorToken
@@ -157,14 +156,14 @@ func (t *Tokenizer) readComment() TokenType {
 
 func (t *Tokenizer) readEndTag() TokenType {
 	// On ignore le '/'
-	t.pos++ 
+	t.pos++
 	// On récupère la position de début du tag
 	start := t.pos
 	// On parcourt le HTML jusqu'à trouver un >
 	for t.pos < len(t.raw) && t.raw[t.pos] != '>' && !unicode.IsSpace(rune(t.raw[t.pos])) {
 		t.pos++
 	}
-	
+
 	// On récupère le nom du tag
 	tagName := strings.ToLower(string(t.raw[start:t.pos]))
 	// On ignore le reste de la balise de fermeture
@@ -224,27 +223,27 @@ func (t *Tokenizer) readAttribute() Attribute {
 	if t.pos >= len(t.raw) || t.raw[t.pos] == '>' || t.raw[t.pos] == '/' {
 		return Attribute{}
 	}
-	
+
 	start := t.pos
-	
+
 	for t.pos < len(t.raw) && t.raw[t.pos] != '=' && t.raw[t.pos] != '>' && t.raw[t.pos] != '/' && !unicode.IsSpace(rune(t.raw[t.pos])) {
 		t.pos++
 	}
-	
+
 	key := strings.ToLower(string(t.raw[start:t.pos]))
 	if key == "" {
 		return Attribute{}
 	}
-	
+
 	t.skipWhitespace()
-	
+
 	if t.pos >= len(t.raw) || t.raw[t.pos] != '=' {
 		return Attribute{Key: key, Val: key}
 	}
-	
+
 	t.pos++ // On ignore le '='
 	t.skipWhitespace()
-	
+
 	var val string
 	if t.pos < len(t.raw) && (t.raw[t.pos] == '"' || t.raw[t.pos] == '\'') {
 		quote := t.raw[t.pos]
@@ -264,7 +263,7 @@ func (t *Tokenizer) readAttribute() Attribute {
 		}
 		val = string(t.raw[start:t.pos])
 	}
-	
+
 	return Attribute{Key: key, Val: val}
 }
 

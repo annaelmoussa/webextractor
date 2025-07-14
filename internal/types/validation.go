@@ -15,12 +15,12 @@ func NewURLString(url string) (URLString, error) {
 	if url == "" {
 		return "", fmt.Errorf("URL cannot be empty")
 	}
-	
+
 	// Validation basique du format
 	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
 		return "", fmt.Errorf("URL must start with http:// or https://")
 	}
-	
+
 	return URLString(url), nil
 }
 
@@ -51,12 +51,12 @@ func NewCSSSelector(selector string) (CSSSelector, error) {
 	if selector == "" {
 		return "", fmt.Errorf("CSS selector cannot be empty")
 	}
-	
+
 	// Validation basique - peut être étendue
 	if strings.Contains(selector, "<") || strings.Contains(selector, ">") {
 		return "", fmt.Errorf("invalid characters in CSS selector")
 	}
-	
+
 	return CSSSelector(selector), nil
 }
 
@@ -88,21 +88,21 @@ func NewFilePath(path string) (FilePath, error) {
 	if path == "" || path == "-" {
 		return FilePath(path), nil // stdout est autorisé
 	}
-	
+
 	cleanPath := filepath.Clean(path)
-	
+
 	// Vérification de la traversée de répertoires
 	if strings.Contains(cleanPath, "..") {
 		return "", fmt.Errorf("directory traversal not allowed in path: %s", path)
 	}
-	
+
 	// Vérification des répertoires système
 	if strings.HasPrefix(cleanPath, "/etc/") ||
 		strings.HasPrefix(cleanPath, "/usr/") ||
 		(strings.HasPrefix(cleanPath, "/var/") && !strings.HasPrefix(cleanPath, "/var/folders/")) {
 		return "", fmt.Errorf("cannot write to system directories: %s", path)
 	}
-	
+
 	return FilePath(cleanPath), nil
 }
 

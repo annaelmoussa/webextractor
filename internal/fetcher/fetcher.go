@@ -12,7 +12,7 @@ import (
 
 // Fetcher encapsule la logique du client HTTP.
 type Fetcher struct {
-	client *http.Client
+	client    *http.Client
 	userAgent types.UserAgent
 }
 

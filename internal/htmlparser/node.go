@@ -20,8 +20,8 @@ type Attribute struct {
 type Node struct {
 	Parent, FirstChild, LastChild, PrevSibling, NextSibling *Node // On peut ajouter des nœuds parents, enfants, etc.
 
-	Type NodeType // On peut ajouter un type à un nœud exemple (TextNode, ElementNode, CommentNode, etc.)
-	Data string // On peut ajouter du texte à un nœud exemple (Hello World)
+	Type NodeType    // On peut ajouter un type à un nœud exemple (TextNode, ElementNode, CommentNode, etc.)
+	Data string      // On peut ajouter du texte à un nœud exemple (Hello World)
 	Attr []Attribute // On peut ajouter des attributs à un nœud exemple (class, id, etc.)
 }
 

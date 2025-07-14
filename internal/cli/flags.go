@@ -24,16 +24,16 @@ func Parse() (*Flags, error) {
 		Out:     defaultOut,
 		Timeout: 10 * time.Second,
 	}
-	
+
 	args := os.Args[1:] // On ignore le nom du programme
-	
+
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
-		
+
 		if !strings.HasPrefix(arg, "-") {
 			return nil, fmt.Errorf("unknown argument: %s", arg)
 		}
-		
+
 		switch arg {
 		case "-url":
 			if i+1 >= len(args) {
@@ -45,14 +45,14 @@ func Parse() (*Flags, error) {
 			}
 			flags.URL = url
 			i++ // ignore l'argument suivant (la valeur)
-			
+
 		case "-sel":
 			if i+1 >= len(args) {
 				return nil, fmt.Errorf("-sel requires a value")
 			}
 			flags.Sel = args[i+1]
 			i++ // ignore l'argument suivant (la valeur)
-			
+
 		case "-out":
 			if i+1 >= len(args) {
 				return nil, fmt.Errorf("-out requires a value")
@@ -63,16 +63,16 @@ func Parse() (*Flags, error) {
 			}
 			flags.Out = outPath
 			i++ // ignore l'argument suivant (la valeur)
-			
+
 		case "-timeout":
 			if i+1 >= len(args) {
 				return nil, fmt.Errorf("-timeout requires a value")
 			}
 			timeoutStr := args[i+1]
-			
+
 			// On parse la durée manuellement (cas simples)
 			var duration time.Duration
-			
+
 			if strings.HasSuffix(timeoutStr, "s") {
 				// On parse les secondes
 				secondsStr := strings.TrimSuffix(timeoutStr, "s")
@@ -99,21 +99,21 @@ func Parse() (*Flags, error) {
 			}
 			flags.Timeout = duration
 			i++ // ignore l'argument suivant (la valeur)
-			
+
 		case "-h", "-help", "--help":
 			printUsage()
 			os.Exit(0)
-			
+
 		default:
 			return nil, fmt.Errorf("unknown flag: %s", arg)
 		}
 	}
-	
+
 	// On valide les flags requis si -url n'est pas présent on retourne une erreur
 	if flags.URL.String() == "" {
 		return nil, fmt.Errorf("required flag missing: -url")
 	}
-	
+
 	return flags, nil
 }
 
@@ -122,7 +122,7 @@ func parseInt(s string) int {
 	if s == "" {
 		return -1
 	}
-	
+
 	result := 0
 	for _, char := range s {
 		if char < '0' || char > '9' {
@@ -131,7 +131,7 @@ func parseInt(s string) int {
 		digit := int(char - '0')
 		result = result*10 + digit
 	}
-	
+
 	return result
 }
 

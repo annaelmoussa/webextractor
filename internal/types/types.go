@@ -17,7 +17,7 @@ func NewSelectorList(selectors string) SelectorList {
 	if strings.TrimSpace(selectors) == "" {
 		return SelectorList{}
 	}
-	
+
 	var result SelectorList
 	for _, sel := range strings.Split(selectors, ",") {
 		if trimmed := strings.TrimSpace(sel); trimmed != "" {
@@ -36,7 +36,7 @@ func (sl SelectorList) IsEmpty() bool {
 func (sl SelectorList) Unique() SelectorList {
 	seen := make(map[string]struct{})
 	var result SelectorList
-	
+
 	for _, sel := range sl {
 		if _, exists := seen[sel]; !exists {
 			seen[sel] = struct{}{}
@@ -75,14 +75,14 @@ func (op OutputPath) String() string {
 type ElementType string
 
 const (
-	ElementTypeTitle      ElementType = "title"
-	ElementTypeH1         ElementType = "h1"
-	ElementTypeH2         ElementType = "h2"
-	ElementTypeH3         ElementType = "h3"
-	ElementTypeParagraph  ElementType = "p"
-	ElementTypeLink       ElementType = "link"
-	ElementTypeImage      ElementType = "image"
-	ElementTypeList       ElementType = "list"
+	ElementTypeTitle     ElementType = "title"
+	ElementTypeH1        ElementType = "h1"
+	ElementTypeH2        ElementType = "h2"
+	ElementTypeH3        ElementType = "h3"
+	ElementTypeParagraph ElementType = "p"
+	ElementTypeLink      ElementType = "link"
+	ElementTypeImage     ElementType = "image"
+	ElementTypeList      ElementType = "list"
 )
 
 // Icon retourne l'icône associée au type d'élément
@@ -131,11 +131,11 @@ const (
 
 // ExtractionConfig contient la configuration pour une extraction
 type ExtractionConfig struct {
-	URL         string
-	Selectors   SelectorList
-	OutputPath  OutputPath
-	Timeout     time.Duration
-	Mode        ExtractionMode
+	URL            string
+	Selectors      SelectorList
+	OutputPath     OutputPath
+	Timeout        time.Duration
+	Mode           ExtractionMode
 	StructuredData map[string]any
 }
 
@@ -163,10 +163,10 @@ func (ec *ExtractionConfig) IsStructuredMode() bool {
 
 // SessionState représente l'état d'une session interactive
 type SessionState struct {
-	CurrentURL       string
+	CurrentURL         string
 	CollectedSelectors SelectorList
-	StructuredData   map[string]any
-	UseStructured    bool
+	StructuredData     map[string]any
+	UseStructured      bool
 }
 
 // NewSessionState crée un nouvel état de session
@@ -196,11 +196,11 @@ func (ss *SessionState) FinalSelectors() SelectorList {
 
 // ExtractionResult représente le résultat d'une extraction
 type ExtractionResult struct {
-	URL          string
-	TotalMatches int
+	URL           string
+	TotalMatches  int
 	SelectorsUsed int
-	Success      bool
-	Error        error
+	Success       bool
+	Error         error
 }
 
 // NewExtractionResult crée un nouveau résultat d'extraction

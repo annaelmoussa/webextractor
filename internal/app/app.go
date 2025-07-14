@@ -43,14 +43,14 @@ func (app *App) Run() error {
 	if app.config.IsStructuredMode() {
 		return app.processStructuredOutput()
 	}
-	
+
 	return app.processSelectorOutput()
 }
 
 // runInteractiveMode gère le mode interactif de sélection
 func (app *App) runInteractiveMode() error {
 	session := types.NewSessionState(app.config.URL)
-	
+
 	for {
 		parsedURL, err := neturl.Parse(session.CurrentURL)
 		if err != nil {
@@ -91,7 +91,7 @@ func (app *App) runInteractiveMode() error {
 	if !session.UseStructured {
 		app.config.Selectors = session.FinalSelectors()
 	}
-	
+
 	return nil
 }
 

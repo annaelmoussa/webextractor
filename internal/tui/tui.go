@@ -94,6 +94,10 @@ func PromptSelectors(root *htmlparser.Node, currentURL *neturl.URL) (TuiResult, 
 			fmt.Printf("🔄 Toutes les sélections effacées\n")
 			continue
 
+		case strings.ToLower(line) == "links" || strings.ToLower(line) == "liens":
+			printAvailableLinks(pageInfo.Links)
+			continue
+
 		case strings.HasPrefix(strings.ToLower(line), "l"):
 			result, err := handleLinkNavigation(line, pageInfo.Links)
 			if err != nil {
@@ -375,7 +379,8 @@ func printSelectionMenu() {
 	fmt.Printf("  • Combinaisons : 0,3,7-9,15\n")
 	fmt.Printf("  • [all]    ✨ Sélectionner tous les éléments\n")
 	fmt.Printf("  • [reset]  🔄 Effacer toutes les sélections\n")
-	fmt.Printf("  • [L0,L1]  🌐 Naviguer vers un lien\n")
+	fmt.Printf("  • [links]  🔗 Afficher les liens disponibles\n")
+	fmt.Printf("  • [L0]     🌐 Naviguer vers le lien numéro 0\n")
 	fmt.Printf("  • [fini]   ✅ Terminer et générer le JSON\n")
 	fmt.Printf("  • [aide]   ❓ Afficher l'aide détaillée\n")
 }
@@ -395,7 +400,11 @@ func printHelp() {
 	fmt.Printf("  → '0-5' pour sélectionner les éléments 0 à 5 inclus\n")
 	fmt.Printf("  → '0,3-7,10' pour combiner individuels et plages\n")
 	fmt.Printf("  → 'all' pour sélectionner tous les éléments\n")
-	fmt.Printf("  → 'reset' pour effacer toutes les sélections\n")
+	fmt.Printf("  → 'reset' pour effacer toutes les sélections\n\n")
+	fmt.Printf("🔗 NAVIGATION VERS LES LIENS :\n")
+	fmt.Printf("  → 'links' pour afficher uniquement les liens disponibles\n")
+	fmt.Printf("  → 'L0' pour naviguer vers le lien numéro 0\n")
+	fmt.Printf("  → 'L5' pour naviguer vers le lien numéro 5\n")
 
 	fmt.Printf("\n💡 STRATÉGIE RECOMMANDÉE :\n")
 	fmt.Printf("1. Examinez la liste numérotée des éléments\n")
@@ -559,21 +568,51 @@ func handleFinishWithSelections(state SelectionState) (TuiResult, error) {
 	}, nil
 }
 
+// printAvailableLinks affiche uniquement les liens disponibles pour la navigation
+func printAvailableLinks(links []parser.Link) {
+	if len(links) == 0 {
+		fmt.Printf("\n🚫 Aucun lien disponible sur cette page.\n")
+		return
+	}
+
+	fmt.Printf("\n" + strings.Repeat("═", 70) + "\n")
+	fmt.Printf("🔗 LIENS DISPONIBLES POUR LA NAVIGATION :\n")
+	fmt.Printf(strings.Repeat("═", 70) + "\n")
+
+	for i, link := range links {
+		linkText := link.Text
+		if len(linkText) > 60 {
+			linkText = linkText[:57] + "..."
+		}
+		fmt.Printf("[L%d] %s\n", i, linkText)
+		fmt.Printf("     → %s\n\n", link.Href)
+	}
+
+	fmt.Printf(strings.Repeat("═", 70) + "\n")
+	fmt.Printf("📝 Pour naviguer, tapez : L0, L1, L2, etc.\n")
+	fmt.Printf(strings.Repeat("═", 70) + "\n")
+}
+
 func handleLinkNavigation(input string, links []parser.Link) (TuiResult, error) {
+	if len(links) == 0 {
+		return TuiResult{}, fmt.Errorf("aucun lien disponible sur cette page")
+	}
+
 	if len(input) < 2 {
-		return TuiResult{}, fmt.Errorf("format invalide. Utilisez L suivi d'un numéro (ex: L0)")
+		return TuiResult{}, fmt.Errorf("format invalide. Utilisez L suivi d'un numéro (ex: L0)\nTapez 'links' pour voir les liens disponibles")
 	}
 
 	idxStr := input[1:]
 	idx, err := strconv.Atoi(idxStr)
 	if err != nil {
-		return TuiResult{}, fmt.Errorf("numéro invalide: %s", idxStr)
+		return TuiResult{}, fmt.Errorf("numéro invalide: %s\nTapez 'links' pour voir les liens disponibles", idxStr)
 	}
 
 	if idx < 0 || idx >= len(links) {
-		return TuiResult{}, fmt.Errorf("index %d hors limites (0-%d)", idx, len(links)-1)
+		return TuiResult{}, fmt.Errorf("index L%d hors limites (L0-L%d)\nTapez 'links' pour voir les liens disponibles", idx, len(links)-1)
 	}
 
-	fmt.Printf("🌐 Navigation vers: %s\n", links[idx].Href)
+	fmt.Printf("🌐 Navigation vers: %s\n", links[idx].Text)
+	fmt.Printf("🔗 URL: %s\n", links[idx].Href)
 	return TuiResult{NextURL: links[idx].Href}, nil
 }
