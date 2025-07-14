@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// URL represents a parsed URL
+// URL représente une URL analysée
 type URL struct {
 	Scheme   string
 	Host     string
@@ -14,7 +14,7 @@ type URL struct {
 	Fragment string
 }
 
-// Parse parses a raw URL string and returns a URL structure
+// Parse analyse une chaîne d'URL brute et retourne une structure URL
 func Parse(rawurl string) (*URL, error) {
 	if rawurl == "" {
 		return nil, errors.New("empty url")
@@ -22,19 +22,19 @@ func Parse(rawurl string) (*URL, error) {
 	
 	u := &URL{}
 	
-	// Remove fragment first
+	// On retire le fragment en premier
 	if idx := strings.Index(rawurl, "#"); idx >= 0 {
 		u.Fragment = rawurl[idx+1:]
 		rawurl = rawurl[:idx]
 	}
 	
-	// Extract query string
+	// On extrait la chaîne de requête
 	if idx := strings.Index(rawurl, "?"); idx >= 0 {
 		u.RawQuery = rawurl[idx+1:]
 		rawurl = rawurl[:idx]
 	}
 	
-	// Extract scheme
+	// On extrait le schéma
 	if idx := strings.Index(rawurl, "://"); idx >= 0 {
 		u.Scheme = strings.ToLower(rawurl[:idx])
 		rawurl = rawurl[idx+3:]
@@ -42,7 +42,7 @@ func Parse(rawurl string) (*URL, error) {
 		return nil, errors.New("missing protocol scheme")
 	}
 	
-	// Split host and path
+	// On sépare le host et le chemin
 	if idx := strings.Index(rawurl, "/"); idx >= 0 {
 		u.Host = rawurl[:idx]
 		u.Path = rawurl[idx:]
@@ -51,12 +51,12 @@ func Parse(rawurl string) (*URL, error) {
 		u.Path = "/"
 	}
 	
-	// Validate scheme
+	// On valide le schéma
 	if u.Scheme != "http" && u.Scheme != "https" {
 		return nil, errors.New("unsupported protocol scheme")
 	}
 	
-	// Validate host
+	// On valide le host
 	if u.Host == "" {
 		return nil, errors.New("empty host")
 	}
@@ -64,7 +64,7 @@ func Parse(rawurl string) (*URL, error) {
 	return u, nil
 }
 
-// String reassembles the URL into a string
+// String reassemble l'URL en chaîne de caractères.
 func (u *URL) String() string {
 	var result strings.Builder
 	
@@ -94,13 +94,13 @@ func (u *URL) String() string {
 	return result.String()
 }
 
-// ResolveReference resolves a URI reference to an absolute URI from an absolute base URI
+// ResolveReference résout une référence URI en URI absolue depuis une URI de base absolue.
 func (u *URL) ResolveReference(ref *URL) *URL {
 	if ref == nil {
 		return u
 	}
 	
-	// If ref has a scheme, it's absolute
+	// Si ref a un schéma, c'est absolu
 	if ref.Scheme != "" {
 		return ref
 	}
@@ -110,7 +110,7 @@ func (u *URL) ResolveReference(ref *URL) *URL {
 		Host:   u.Host,
 	}
 	
-	// Handle absolute path
+	// On gère le chemin absolu
 	if strings.HasPrefix(ref.Path, "/") {
 		result.Path = ref.Path
 		result.RawQuery = ref.RawQuery
@@ -118,7 +118,7 @@ func (u *URL) ResolveReference(ref *URL) *URL {
 		return result
 	}
 	
-	// Handle relative path
+	// On gère le chemin relatif
 	if ref.Path == "" {
 		result.Path = u.Path
 		if ref.RawQuery != "" {
@@ -130,10 +130,10 @@ func (u *URL) ResolveReference(ref *URL) *URL {
 		return result
 	}
 	
-	// Resolve relative path
+	// On résout le chemin relatif
 	basePath := u.Path
 	if !strings.HasSuffix(basePath, "/") {
-		// Remove filename from base path
+		// Supprime le nom de fichier du chemin de base
 		if idx := strings.LastIndex(basePath, "/"); idx >= 0 {
 			basePath = basePath[:idx+1]
 		} else {
@@ -145,13 +145,13 @@ func (u *URL) ResolveReference(ref *URL) *URL {
 	result.RawQuery = ref.RawQuery
 	result.Fragment = ref.Fragment
 	
-	// Clean up path (remove . and ..)
+	// On nettoie le chemin (on retire . et ..)
 	result.Path = cleanPath(result.Path)
 	
 	return result
 }
 
-// cleanPath cleans up relative path components
+// cleanPath nettoie les composants de chemin relatifs
 func cleanPath(path string) string {
 	if path == "" {
 		return "/"
@@ -163,10 +163,10 @@ func cleanPath(path string) string {
 	for _, part := range parts {
 		switch part {
 		case "", ".":
-			// Skip empty and current directory
+			// On ignore le chemin vide et le répertoire courant
 			continue
 		case "..":
-			// Parent directory
+			// On supprime le répertoire parent
 			if len(clean) > 0 {
 				clean = clean[:len(clean)-1]
 			}

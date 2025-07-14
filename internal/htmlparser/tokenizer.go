@@ -6,7 +6,7 @@ import (
 	"unicode"
 )
 
-// TokenType represents the type of a token.
+// TokenType représente le type d'un token.
 type TokenType int
 
 const (
@@ -19,14 +19,14 @@ const (
 	DoctypeToken
 )
 
-// Token represents a token found during parsing.
+// Token représente un token trouvé pendant l'analyse.
 type Token struct {
 	Type TokenType
 	Data string
 	Attr []Attribute
 }
 
-// Tokenizer breaks HTML into tokens.
+// Tokenizer décompose le HTML en tokens.
 type Tokenizer struct {
 	r     io.Reader
 	raw   []byte
@@ -34,7 +34,7 @@ type Tokenizer struct {
 	token Token
 }
 
-// NewTokenizer creates a new tokenizer.
+// NewTokenizer crée un nouveau tokenizer.
 func NewTokenizer(r io.Reader) *Tokenizer {
 	raw, _ := io.ReadAll(r)
 	return &Tokenizer{
@@ -44,7 +44,7 @@ func NewTokenizer(r io.Reader) *Tokenizer {
 	}
 }
 
-// Next advances to the next token.
+// Next avance au token suivant.
 func (t *Tokenizer) Next() TokenType {
 	if t.pos >= len(t.raw) {
 		return ErrorToken
@@ -56,7 +56,7 @@ func (t *Tokenizer) Next() TokenType {
 	return t.readText()
 }
 
-// Token returns the current token.
+// Token retourne le token actuel.
 func (t *Tokenizer) Token() Token {
 	return t.token
 }
@@ -70,7 +70,7 @@ func (t *Tokenizer) readText() TokenType {
 	text := string(t.raw[start:t.pos])
 	text = strings.TrimSpace(text)
 	if text == "" {
-		// Skip empty text and try next token
+		// On ignore le texte vide et on essaie le token suivant
 		if t.pos < len(t.raw) {
 			return t.Next()
 		}
@@ -88,7 +88,7 @@ func (t *Tokenizer) readTag() TokenType {
 		return ErrorToken
 	}
 	
-	t.pos++ // skip '<'
+	t.pos++ // On ignore le '<'
 	
 	if t.pos < len(t.raw) && t.raw[t.pos] == '!' {
 		return t.readComment()
@@ -103,7 +103,7 @@ func (t *Tokenizer) readTag() TokenType {
 
 func (t *Tokenizer) readComment() TokenType {
 	if t.pos+3 >= len(t.raw) || string(t.raw[t.pos:t.pos+3]) != "!--" {
-		// Handle <!DOCTYPE> and other declarations
+		// On gère le <!DOCTYPE> et les autres déclarations
 		if t.pos+1 < len(t.raw) && strings.ToUpper(string(t.raw[t.pos:t.pos+2])) == "!D" {
 			t.skipToEnd()
 			t.token = Token{
@@ -116,7 +116,7 @@ func (t *Tokenizer) readComment() TokenType {
 		return ErrorToken
 	}
 	
-	t.pos += 3 // skip "!--"
+	t.pos += 3 // On ignore le "!--"
 	start := t.pos
 	
 	for t.pos+2 < len(t.raw) {
@@ -137,7 +137,7 @@ func (t *Tokenizer) readComment() TokenType {
 }
 
 func (t *Tokenizer) readEndTag() TokenType {
-	t.pos++ // skip '/'
+	t.pos++ // On ignore le '/'
 	start := t.pos
 	
 	for t.pos < len(t.raw) && t.raw[t.pos] != '>' && !unicode.IsSpace(rune(t.raw[t.pos])) {
@@ -214,7 +214,7 @@ func (t *Tokenizer) readAttribute() Attribute {
 		return Attribute{Key: key, Val: key}
 	}
 	
-	t.pos++ // skip '='
+	t.pos++ // On ignore le '='
 	t.skipWhitespace()
 	
 	var val string
@@ -227,7 +227,7 @@ func (t *Tokenizer) readAttribute() Attribute {
 		}
 		val = string(t.raw[start:t.pos])
 		if t.pos < len(t.raw) {
-			t.pos++ // skip closing quote
+			t.pos++ // On ignore la quote de fermeture
 		}
 	} else {
 		start := t.pos
@@ -251,6 +251,6 @@ func (t *Tokenizer) skipToEnd() {
 		t.pos++
 	}
 	if t.pos < len(t.raw) {
-		t.pos++ // skip '>'
+		t.pos++ // On ignore le '>'
 	}
 }

@@ -4,7 +4,7 @@ import (
 	"errors"
 )
 
-// Atoi converts a string to an integer
+// Atoi convertit une chaîne en entier
 func Atoi(s string) (int, error) {
 	if s == "" {
 		return 0, errors.New("invalid syntax")
@@ -13,7 +13,7 @@ func Atoi(s string) (int, error) {
 	neg := false
 	i := 0
 	
-	// Handle negative numbers
+	// On gère les nombres négatifs
 	if s[0] == '-' {
 		if len(s) == 1 {
 			return 0, errors.New("invalid syntax")
@@ -36,7 +36,7 @@ func Atoi(s string) (int, error) {
 		
 		digit := int(char - '0')
 		
-		// Check for overflow (simplified)
+		// Vérification de débordement (simplifiée)
 		if result > (1<<31-1-digit)/10 {
 			if neg {
 				return -1 << 31, errors.New("value out of range")
@@ -53,7 +53,7 @@ func Atoi(s string) (int, error) {
 	return result, nil
 }
 
-// Itoa converts an integer to a string
+// Itoa convertit un entier en chaîne
 func Itoa(i int) string {
 	if i == 0 {
 		return "0"
@@ -64,7 +64,7 @@ func Itoa(i int) string {
 		i = -i
 	}
 	
-	// Count digits
+	// Compte les chiffres
 	temp := i
 	digits := 0
 	for temp > 0 {
@@ -72,7 +72,7 @@ func Itoa(i int) string {
 		temp /= 10
 	}
 	
-	// Build string
+	// On construit la chaîne
 	var result []byte
 	if neg {
 		result = make([]byte, digits+1)
@@ -92,7 +92,7 @@ func Itoa(i int) string {
 	return string(result)
 }
 
-// ParseInt parses a string in the given base and returns the corresponding value
+// ParseInt analyse une chaîne dans la base donnée et retourne la valeur correspondante
 func ParseInt(s string, base, bitSize int) (int64, error) {
 	if base != 10 {
 		return 0, errors.New("unsupported base")

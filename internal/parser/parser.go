@@ -6,10 +6,10 @@ import (
 	"webextractor/internal/htmlparser"
 )
 
-// MatchFunc decides if a given node matches our selector.
+// MatchFunc décide si un nœud donné correspond à notre sélecteur.
 type MatchFunc func(n *htmlparser.Node) bool
 
-// Compile builds a MatchFunc from a simple selector string.
+// Compile construit une MatchFunc depuis une chaîne de sélecteur simple.
 func Compile(selector string) MatchFunc {
 	selector = strings.TrimSpace(selector)
 	if selector == "" {
@@ -56,7 +56,7 @@ func Compile(selector string) MatchFunc {
 	}
 }
 
-// FindAll traverses the DOM tree depth-first and returns nodes that match the selector.
+// FindAll parcourt l'arbre DOM en profondeur et retourne les nœuds qui correspondent au sélecteur.
 func FindAll(root *htmlparser.Node, selector string) []*htmlparser.Node {
 	matcher := Compile(selector)
 	var out []*htmlparser.Node
@@ -73,7 +73,7 @@ func FindAll(root *htmlparser.Node, selector string) []*htmlparser.Node {
 	return out
 }
 
-// TextContent returns the concatenation of all text descendants of n.
+// TextContent retourne la concaténation de tous les descendants texte de n.
 func TextContent(n *htmlparser.Node) string {
 	var b strings.Builder
 	var rec func(*htmlparser.Node)
@@ -90,13 +90,13 @@ func TextContent(n *htmlparser.Node) string {
 	return strings.TrimSpace(b.String())
 }
 
-// Link represents a hyperlink with its text and URL.
+// Link représente un hyperlien avec son texte et son URL.
 type Link struct {
 	Href string
 	Text string
 }
 
-// FindLinks traverses the HTML tree and extracts all hyperlinks.
+// FindLinks parcourt l'arbre HTML et extrait tous les hyperliens.
 func FindLinks(n *htmlparser.Node) []Link {
 	var links []Link
 	if n.Type == htmlparser.ElementNode && n.Data == "a" {

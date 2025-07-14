@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// Flags holds all command line flag values
+// Flags contient toutes les valeurs des paramètres de ligne de commande
 type Flags struct {
 	URL     string
 	Sel     string
@@ -15,14 +15,14 @@ type Flags struct {
 	Timeout time.Duration
 }
 
-// Parse parses command line arguments and returns flag values
+// Parse analyse les arguments de ligne de commande et retourne les valeurs des paramètres
 func Parse() (*Flags, error) {
 	flags := &Flags{
-		Out:     "-",                // default
-		Timeout: 10 * time.Second,   // default
+		Out:     "-",                // par défaut
+		Timeout: 10 * time.Second,   // par défaut
 	}
 	
-	args := os.Args[1:] // skip program name
+	args := os.Args[1:] // On ignore le nom du programme
 	
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
@@ -37,21 +37,21 @@ func Parse() (*Flags, error) {
 				return nil, fmt.Errorf("-url requires a value")
 			}
 			flags.URL = args[i+1]
-			i++ // skip next arg (the value)
+			i++ // ignore l'argument suivant (la valeur)
 			
 		case "-sel":
 			if i+1 >= len(args) {
 				return nil, fmt.Errorf("-sel requires a value")
 			}
 			flags.Sel = args[i+1]
-			i++ // skip next arg (the value)
+			i++ // ignore l'argument suivant (la valeur)
 			
 		case "-out":
 			if i+1 >= len(args) {
 				return nil, fmt.Errorf("-out requires a value")
 			}
 			flags.Out = args[i+1]
-			i++ // skip next arg (the value)
+			i++ // ignore l'argument suivant (la valeur)
 			
 		case "-timeout":
 			if i+1 >= len(args) {
@@ -59,11 +59,11 @@ func Parse() (*Flags, error) {
 			}
 			timeoutStr := args[i+1]
 			
-			// Parse duration manually (simple cases)
+			// On parse la durée manuellement (cas simples)
 			var duration time.Duration
 			
 			if strings.HasSuffix(timeoutStr, "s") {
-				// Parse seconds
+				// On parse les secondes
 				secondsStr := strings.TrimSuffix(timeoutStr, "s")
 				seconds := parseInt(secondsStr)
 				if seconds < 0 {
@@ -71,7 +71,7 @@ func Parse() (*Flags, error) {
 				}
 				duration = time.Duration(seconds) * time.Second
 			} else if strings.HasSuffix(timeoutStr, "m") {
-				// Parse minutes
+				// On parse les minutes
 				minutesStr := strings.TrimSuffix(timeoutStr, "m")
 				minutes := parseInt(minutesStr)
 				if minutes < 0 {
@@ -79,7 +79,7 @@ func Parse() (*Flags, error) {
 				}
 				duration = time.Duration(minutes) * time.Minute
 			} else {
-				// Default to seconds if no suffix
+				// On définit la durée par défaut en secondes si pas de suffixe
 				seconds := parseInt(timeoutStr)
 				if seconds < 0 {
 					return nil, fmt.Errorf("invalid timeout: %s", timeoutStr)
@@ -87,7 +87,7 @@ func Parse() (*Flags, error) {
 				duration = time.Duration(seconds) * time.Second
 			}
 			flags.Timeout = duration
-			i++ // skip next arg (the value)
+			i++ // ignore l'argument suivant (la valeur)
 			
 		case "-h", "-help", "--help":
 			printUsage()
@@ -98,7 +98,7 @@ func Parse() (*Flags, error) {
 		}
 	}
 	
-	// Validate required flags
+	// On valide les flags requis
 	if flags.URL == "" {
 		return nil, fmt.Errorf("required flag missing: -url")
 	}
@@ -106,7 +106,7 @@ func Parse() (*Flags, error) {
 	return flags, nil
 }
 
-// parseInt parses a string to int, returns -1 on error
+// parseInt convertit une chaîne en entier, retourne -1 en cas d'erreur.
 func parseInt(s string) int {
 	if s == "" {
 		return -1
@@ -124,7 +124,7 @@ func parseInt(s string) int {
 	return result
 }
 
-// printUsage prints help information
+// printUsage affiche les informations d'aide.
 func printUsage() {
 	fmt.Printf(`Usage of %s:
   -url string

@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// Parse parses HTML from a reader and returns the root node.
+// Parse analyse le HTML depuis un reader et retourne le nœud racine.
 func Parse(r io.Reader) (*Node, error) {
 	tokenizer := NewTokenizer(r)
 	doc := &Node{Type: DocumentNode}
@@ -75,7 +75,7 @@ func Parse(r io.Reader) (*Node, error) {
 	return doc, nil
 }
 
-// isSelfClosing returns true for self-closing HTML tags.
+// isSelfClosing retourne true pour les balises HTML auto-fermantes.
 func isSelfClosing(tag string) bool {
 	selfClosing := map[string]bool{
 		"area": true, "base": true, "br": true, "col": true,

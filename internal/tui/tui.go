@@ -55,8 +55,8 @@ type SelectionState struct {
 	PageInfo PageInfo
 }
 
-// PromptSelectors enters an interactive session where the user can pick elements
-// individually and combine selections across different categories.
+// PromptSelectors entre dans une session interactive où l'utilisateur peut choisir des éléments
+// individuellement et combiner les sélections entre différentes catégories.
 func PromptSelectors(root *htmlparser.Node, currentURL *neturl.URL) (TuiResult, error) {
 	pageInfo := extractPageInfo(root, currentURL)
 	elements := buildSelectableElements(pageInfo)

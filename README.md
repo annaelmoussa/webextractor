@@ -1,13 +1,10 @@
 # WebExtractor CLI
 
-[![CI/CD Pipeline](https://github.com/annaelmoussa/webextractor/actions/workflows/ci.yml/badge.svg)](https://github.com/annaelmoussa/webextractor/actions/workflows/ci.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/annaelmoussa/webextractor)](https://goreportcard.com/report/github.com/annaelmoussa/webextractor)
-[![codecov](https://codecov.io/gh/annaelmoussa/webextractor/branch/main/graph/badge.svg)](https://codecov.io/gh/annaelmoussa/webextractor)
-[![Release](https://img.shields.io/github/release/annaelmoussa/webextractor.svg)](https://github.com/annaelmoussa/webextractor/releases/latest)
+
 [![Go Version](https://img.shields.io/badge/go-%3E%3D1.23-blue.svg)](https://golang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Un extracteur HTML minimaliste écrit en Go avec une architecture modulaire et des dépendances minimales.
+Un extracteur HTML minimaliste écrit en Go avec une architecture modulaire, des dépendances minimales.
 
 ## 🚀 Fonctionnalités
 
@@ -24,7 +21,7 @@ Un extracteur HTML minimaliste écrit en Go avec une architecture modulaire et d
   - **Navigation web** : Possibilité de suivre les liens détectés pour explorer d'autres pages
   - **Aperçu en temps réel** : Prévisualisation des sélections avant extraction finale
 - **Sortie JSON flexible** : Format standardisé ou structuré selon le mode utilisé
-- **Qualité** : >80% de couverture de tests, zéro warning `go vet`, code `go fmt` compliant
+- **Qualité et documentation** : >80% de couverture de tests, zéro warning `go vet`, code `go fmt` compliant, documentation API.
 
 ## 📋 Formats de sortie
 
@@ -166,15 +163,6 @@ webextractor/
 
 ## 🧪 Développement
 
-### Pipeline CI/CD
-
-Le projet utilise GitHub Actions pour automatiser :
-
-- **Tests et qualité** : Exécution automatique des tests avec couverture ≥ 70%
-- **Linting** : Vérification du code avec `go vet`, `gofmt`, `golangci-lint` et `staticcheck`
-- **Build multi-plateforme** : Compilation pour Linux, macOS et Windows (AMD64 + ARM64)
-- **Scans de sécurité** : Analyse avec `gosec` et review des dépendances
-- **Releases automatiques** : Génération de binaires et archives lors des tags
 
 ### Commandes de développement
 
@@ -218,26 +206,11 @@ echo "0,2-4" | ./webextractor -url https://example.com
 echo "L0" | ./webextractor -url https://example.com
 ```
 
-### Processus de release
 
-1. **Développement** : Travail sur une branche feature
-2. **Pull Request** : Tests automatiques et review
-3. **Merge** : Intégration en `main` après validation
-4. **Tag** : Création d'un tag `v1.2.3` pour déclencher la release
-5. **Release automatique** : Génération des binaires et publication
-
-```bash
-# Créer une release
-git tag v1.0.0
-git push origin v1.0.0
-# → Déclenche automatiquement la création de la release avec binaires
-```
 
 ## 📦 Dépendances
 
 - **Go 1.22+** (standard library)
-- `golang.org/x/net/html` — Parseur HTML
-- `golang.org/x/term` — Support terminal (optionnel, pour futures améliorations TUI)
 
 ## 🤝 Contribution
 

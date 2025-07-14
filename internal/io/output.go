@@ -8,19 +8,19 @@ import (
 	"strings"
 )
 
-// Result represents one extraction result.
+// Result représente un résultat d'extraction.
 type Result struct {
 	Selector string   `json:"selector"`
 	Matches  []string `json:"matches"`
 }
 
-// DocumentResult is the top-level structure of the JSON output.
+// DocumentResult est la structure de niveau supérieur du format JSON.
 type DocumentResult struct {
 	URL     string   `json:"url"`
 	Results []Result `json:"results"`
 }
 
-// StructuredResult represents the structured output format.
+// StructuredResult représente le format de sortie structuré.
 type StructuredResult struct {
 	URL        string   `json:"url"`
 	Title      string   `json:"title,omitempty"`
@@ -33,6 +33,7 @@ type StructuredResult struct {
 	Lists      []string `json:"lists,omitempty"`
 }
 
+// validateOutputPath valide le chemin de sortie.
 func validateOutputPath(path string) error {
 	if path == "-" || path == "" {
 		return nil
@@ -53,7 +54,8 @@ func validateOutputPath(path string) error {
 	return nil
 }
 
-// Write writes the result to the given file path ("-" means stdout).
+// Write écrit le résultat dans le chemin de fichier donné ("-" signifie stdout).
+// path est le chemin de sortie, doc est le résultat à écrire.
 func Write(path string, doc DocumentResult) error {
 	if err := validateOutputPath(path); err != nil {
 		return fmt.Errorf("output path validation failed: %w", err)
@@ -61,7 +63,7 @@ func Write(path string, doc DocumentResult) error {
 
 	enc := json.NewEncoder(os.Stdout)
 	if path != "-" && path != "" {
-		file, err := os.Create(path) // #nosec G304 - path validated above
+		file, err := os.Create(path) // #nosec G304 - path validated above - on valide le chemin ci-dessus
 		if err != nil {
 			return err
 		}
@@ -75,7 +77,8 @@ func Write(path string, doc DocumentResult) error {
 	return nil
 }
 
-// WriteStructured writes the structured result to the given file path ("-" means stdout).
+// WriteStructured écrit le résultat structuré dans le chemin de fichier donné ("-" signifie stdout).
+// path est le chemin de sortie, doc est le résultat à écrire.
 func WriteStructured(path string, doc StructuredResult) error {
 	if err := validateOutputPath(path); err != nil {
 		return fmt.Errorf("output path validation failed: %w", err)
@@ -83,7 +86,7 @@ func WriteStructured(path string, doc StructuredResult) error {
 
 	enc := json.NewEncoder(os.Stdout)
 	if path != "-" && path != "" {
-		file, err := os.Create(path) // #nosec G304 - path validated above
+		file, err := os.Create(path) // #nosec G304 - path validated above - on valide le chemin ci-dessus
 		if err != nil {
 			return err
 		}

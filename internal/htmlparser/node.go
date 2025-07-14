@@ -1,6 +1,6 @@
 package htmlparser
 
-// NodeType represents the type of a node in the HTML tree.
+// NodeType représente le type d'un nœud dans l'arbre HTML.
 type NodeType int
 
 const (
@@ -12,13 +12,13 @@ const (
 	DoctypeNode
 )
 
-// Attribute represents an HTML attribute.
+// Attribute représente un attribut HTML.
 type Attribute struct {
 	Key string
 	Val string
 }
 
-// Node represents a node in the HTML tree.
+// Node représente un nœud dans l'arbre HTML.
 type Node struct {
 	Parent, FirstChild, LastChild, PrevSibling, NextSibling *Node
 
@@ -27,7 +27,7 @@ type Node struct {
 	Attr []Attribute
 }
 
-// AppendChild adds a child node to the end of the given node's children.
+// AppendChild ajoute un nœud enfant à la fin des enfants du nœud donné.
 func (n *Node) AppendChild(child *Node) {
 	if child.Parent != nil {
 		child.Parent.RemoveChild(child)
@@ -42,7 +42,7 @@ func (n *Node) AppendChild(child *Node) {
 	n.LastChild = child
 }
 
-// RemoveChild removes a child node from the given node.
+// RemoveChild supprime un nœud enfant du nœud donné.
 func (n *Node) RemoveChild(child *Node) {
 	if child.Parent != n {
 		return

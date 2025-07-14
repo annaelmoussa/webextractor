@@ -9,12 +9,12 @@ import (
 	"webextractor/internal/htmlparser"
 )
 
-// Fetcher encapsulates HTTP client logic.
+// Fetcher encapsule la logique du client HTTP.
 type Fetcher struct {
 	client *http.Client
 }
 
-// New returns a Fetcher with the given timeout.
+// New retourne un Fetcher avec le timeout donné.
 func New(timeout time.Duration) *Fetcher {
 	return &Fetcher{
 		client: &http.Client{
@@ -23,7 +23,7 @@ func New(timeout time.Duration) *Fetcher {
 	}
 }
 
-// Fetch retrieves the page located at url and parses the body as HTML.
+// Fetch récupère la page située à l'URL et analyse le corps comme HTML.
 func (f *Fetcher) Fetch(url string) (*htmlparser.Node, error) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
